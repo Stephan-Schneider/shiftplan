@@ -2,6 +2,7 @@ package shiftplan.calendar;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import shiftplan.users.EmployeeGroup;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -29,14 +30,46 @@ public class ShiftPlanner {
         );
     }
 
+    public void createHomeOfficePlan(List<EmployeeGroup> employeeGroups, int homeOfficeDayCount) {
+        assert employeeGroups != null && !employeeGroups.isEmpty();
+        int forwardCount = employeeGroups.size() * homeOfficeDayCount;
+        logger.debug("forwardCount = {}", forwardCount);
+        int startIndex = 0;
+        List<LocalDate> workDays = getWorkDays();
+        logger.debug("workdays.size() (number of workdays) = {}", workDays.size());
+
+        for (EmployeeGroup employeeGroup : employeeGroups) {
+            for (int index = startIndex; index < workDays.size(); index +=forwardCount) {
+                int outerBound = checkRangeInBounds(workDays.size(), index, homeOfficeDayCount);
+                logger.debug("outerBound: {}", outerBound);
+                if (outerBound > -1) {
+                    List<LocalDate> dateRange = workDays.subList(index, outerBound);
+                    employeeGroup.addToPlan(dateRange);
+                }
+            }
+            startIndex += homeOfficeDayCount;
+            logger.debug("startIndex (nach Ende der inneren (for-) Schleife: {}", startIndex);
+        }
+    }
+
+    private int checkRangeInBounds(int workDaysSize, int currentIndex, int homeOfficeDayCount) {
+        for (int i = homeOfficeDayCount; i >= 1; --i) {
+            int outerBound = currentIndex + i;
+            if (outerBound < workDaysSize) {
+                return outerBound;
+            }
+        }
+        return -1;
+    }
+
     List<LocalDate> getWorkDays() {
         List<LocalDate> workDays = new ArrayList<>();
         LongStream allDaysOfYear = LongStream.range(0, startDate.lengthOfYear());
         allDaysOfYear.forEach(dayIncrement -> {
             LocalDate current = startDate.plusDays(dayIncrement);
-            logger.debug("Nächstes Datum: {}",
-                    current.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)));
             if (isWorkday(current) && isNotHoliday(current)) {
+                logger.debug("Nächstes Datum in Liste (Kein W/E, kein Feiertag: {}",
+                        current.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)));
                 workDays.add(current);
             }
         });
@@ -50,6 +83,7 @@ public class ShiftPlanner {
     }
 
     boolean isNotHoliday(LocalDate date) {
+        assert date != null;
         return !holidays.contains(date);
     }
 
