@@ -18,6 +18,25 @@ public class EmployeeGroup {
         this.employees = employees;
         allEmployees.addAll(Arrays.asList(employees));
         homeOfficePlan = new ArrayList<>();
+
+        setReverseRelationShip();
+    }
+
+    private void setReverseRelationShip() {
+        for (Employee e : employees) {
+            e.setEmployeeGroup(this);
+        }
+    }
+
+    public static Employee[] getEmployeesInShiftOrder() {
+        Employee[] shiftOrderedEmployees = new Employee[allEmployees.size()];
+        for (Employee employee : allEmployees) {
+            if (employee.getLateShiftOrder() >= 0) {
+                // index >= 0: Mitarbeiter partizipiert an Spätschicht, index < 0: Mitarbeiter partizipiert nicht
+                shiftOrderedEmployees[employee.getLateShiftOrder()] = employee;
+            }
+        }
+        return shiftOrderedEmployees;
     }
 
     public String getGroupName() {
@@ -26,10 +45,6 @@ public class EmployeeGroup {
 
     public List<LocalDate> getHomeOfficePlan() {
         return homeOfficePlan;
-    }
-
-    public void addToPlan(LocalDate date) {
-        homeOfficePlan.add(date);
     }
 
     public void addToPlan(List<LocalDate> dates) {
