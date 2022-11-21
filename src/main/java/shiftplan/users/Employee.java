@@ -10,8 +10,8 @@ public class Employee {
     private final String lastName;
     private boolean lateShiftOnly = false;
     private final int lateShiftOrder; // -1 = Keine Spätschicht !!
+    private String highlightColor;
     private final List<LocalDate> lateShiftPlan;
-    private final List<LocalDate> holidays;
     private EmployeeGroup employeeGroup;
 
     public Employee(String aName, String aLastName, int shiftOrder) {
@@ -19,12 +19,16 @@ public class Employee {
         lastName = aLastName;
         lateShiftOrder = shiftOrder;
         lateShiftPlan = new ArrayList<>();
-        holidays = new ArrayList<>();
     }
 
     public Employee(String name, String lastName, int shiftOrder, boolean lateShiftOnly) {
         this(name, lastName, shiftOrder);
         this.lateShiftOnly = lateShiftOnly;
+    }
+
+    public Employee(String name, String lastName, int shiftOrder, boolean lateShiftOnly, String highlightColor) {
+        this(name, lastName, shiftOrder, lateShiftOnly);
+        this.highlightColor = highlightColor;
     }
 
     public String getName() {
@@ -43,8 +47,23 @@ public class Employee {
         return lateShiftOrder;
     }
 
+    public String getHighlightColor() {
+        if (highlightColor == null || highlightColor.isEmpty()) {
+            return "#000000";
+        }
+        return highlightColor;
+    }
+
     void setEmployeeGroup(EmployeeGroup group) {
         employeeGroup = group;
+    }
+
+    public EmployeeGroup getEmployeeGroup() {
+        return employeeGroup;
+    }
+
+    public String getEmployeeGroupName() {
+        return employeeGroup.getGroupName();
     }
 
     public boolean isHomeOfficeDay(LocalDate date) {

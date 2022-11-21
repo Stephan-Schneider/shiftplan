@@ -11,6 +11,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class ShiftPlanner {
 
@@ -47,6 +49,26 @@ public class ShiftPlanner {
         // Plan für ein Benutzer-definiertes Start- und Enddatum
         this.startDate = startDate;
         this.endDate = endDate.plusDays(1);
+    }
+
+    public Map<String, Shift> createShiftPlan(List<EmployeeGroup> employeeGroups) {
+        Map<String, Shift> shiftPlan = new TreeMap<>();
+
+        employeeGroups.forEach(employeeGroup -> {
+            for (LocalDate date : employeeGroup.getHomeOfficePlan()) {
+                Shift shift = shiftPlan.getOrDefault(date.toString(), new Shift(date));
+                shift.setHomeOfficeGroup(employeeGroup);
+                shiftPlan.putIfAbsent(date.toString(), shift);
+            }
+            for (Employee employee : employeeGroup.getEmployees()) {
+                employee.getLateShiftPlan().forEach(date -> {
+                    Shift shift = shiftPlan.getOrDefault(date.toString(), new Shift(date));
+                    shift.setLateShift(employee);
+                    shiftPlan.putIfAbsent(date.toString(), shift);
+                });
+            }
+        });
+        return shiftPlan;
     }
 
     public void createHomeOfficePlan(List<EmployeeGroup> employeeGroups, int homeOfficeDayCount) {

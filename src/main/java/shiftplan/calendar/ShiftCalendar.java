@@ -53,11 +53,11 @@ public class ShiftCalendar {
 
         List<LocalDate[]> calendarWeeks = new ArrayList<>();
         IntStream.range(0, rangeEnd).forEach(cwIndex -> {
-            logger.debug("*** Kalenderwoche {} im Jahr {} ***", cwIndex +1, ref.start.getYear());
+            logger.trace("*** Kalenderwoche {} im Jahr {} ***", cwIndex +1, ref.start.getYear());
             List<LocalDate> calendarWeekList = ref.start.datesUntil(ref.start.plusDays(7)).toList();
             LocalDate[] calendarWeek = calendarWeekList.toArray(new LocalDate[] {});
             calendarWeeks.add(cwIndex, calendarWeek);
-            logger.debug("CW {} von {} bis {}",
+            logger.trace("CW {} von {} bis {}",
                     cwIndex +1, calendarWeek[0], calendarWeek[calendarWeek.length -1]);
             ref.start = calendarWeek[calendarWeek.length -1].plusDays(1);
         });

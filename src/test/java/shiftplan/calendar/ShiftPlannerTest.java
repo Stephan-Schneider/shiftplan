@@ -1,16 +1,24 @@
 package shiftplan.calendar;
 
+import freemarker.template.TemplateException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
+import shiftplan.document.TemplateProcessor;
 import shiftplan.users.Employee;
 import shiftplan.users.EmployeeGroup;
 
+import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -77,7 +85,7 @@ class ShiftPlannerTest {
     }
 
     @Test
-    void createShiftPlan() {
+    void createLateShiftPlan() {
         List<EmployeeGroup> groups = createGroups();
         ShiftPlanner shiftPlanner = new ShiftPlanner();
         shiftPlanner.createHomeOfficePlan(groups, 2);
@@ -96,17 +104,70 @@ class ShiftPlannerTest {
         }
     }
 
+    @Test
+    void createShiftPlan() {
+        List<EmployeeGroup> groups = createGroups();
+        ShiftPlanner shiftPlanner = new ShiftPlanner();
+
+        shiftPlanner.createHomeOfficePlan(groups, 2);
+        Employee[]employees = EmployeeGroup.getEmployeesInShiftOrder();
+        shiftPlanner.createLateShiftPlan(employees,5);
+
+        Map<String, Shift> shiftPlan = shiftPlanner.createShiftPlan(groups);
+        shiftPlan.keySet().forEach(date -> {
+            logger.debug(shiftPlan.get(date));
+        });
+        assertTrue(shiftPlan.size() > 0);
+
+    }
+
+    @Test
+    void createCalendar() throws TemplateException, IOException {
+        List<EmployeeGroup> groups = createGroups();
+        ShiftPlanner shiftPlanner = new ShiftPlanner();
+
+        shiftPlanner.createHomeOfficePlan(groups, 2);
+        Employee[] employees = EmployeeGroup.getEmployeesInShiftOrder();
+        shiftPlanner.createLateShiftPlan(employees,5);
+
+        Map<String, Shift> shiftPlan = shiftPlanner.createShiftPlan(groups);
+        LocalDate from = LocalDate.of(2022,1,1);
+        LocalDate to = LocalDate.of(2022,12,31);
+
+        ShiftCalendar shiftCalendar = new ShiftCalendar();
+        LocalDate startOfFirstWeek = shiftCalendar.getFirstCalendarWeekStart(from.getYear());
+        List<LocalDate[]> calendar = shiftCalendar.createCalendar(from.getYear(), startOfFirstWeek);
+
+        List<Employee> allEmployees = EmployeeGroup.getAllEmployees();
+
+        Map<String, Object> dataModel = new HashMap<>();
+        dataModel.put("startDate", from);
+        dataModel.put("endDate", to);
+        dataModel.put("employees", allEmployees);
+        dataModel.put("shiftPlan", shiftPlan);
+        dataModel.put("calendar", calendar);
+
+        TemplateProcessor processor = TemplateProcessor.INSTANCE;
+        StringWriter output = processor.processDocumentTemplate(dataModel, "shiftplan.ftl");
+
+        File outputFile = Path.of("/", "home", "stephan", "schichtplan.html").toFile();
+        BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile, StandardCharsets.UTF_8));
+
+        writer.write(output.toString());
+        writer.flush();
+    }
+
     private List<EmployeeGroup> createGroups() {
 
         // Group 1
-        Employee emp1a = new Employee("Hans", "Maier",5);
-        Employee emp1b = new Employee("Sabine", "Klein",2);
+        Employee emp1a = new Employee("Hans", "Maier",5, false, "#0099ee");
+        Employee emp1b = new Employee("Sabine", "Klein",2, false,"darkred");
         // Group 2
-        Employee emp2a = new Employee("Willi", "Schick",4);
-        Employee emp2b = new Employee("Karla", "Meier",1);
+        Employee emp2a = new Employee("Willi", "Schick",4, false,"yellowgreen");
+        Employee emp2b = new Employee("Karla", "Meier",1, false,"orangered");
         // Group 3
-        Employee emp3a = new Employee("Otto", "Waalkes",3);
-        Employee emp3b = new Employee("Natalie", "Schön", 0);
+        Employee emp3a = new Employee("Otto", "Waalkes",3, false,"brown");
+        Employee emp3b = new Employee("Natalie", "Schön", 0, false,"darkgoldenrod");
 
         EmployeeGroup group1 = new EmployeeGroup("Group 1", new Employee[] {emp1a, emp1b});
         EmployeeGroup group2 = new EmployeeGroup("Group 2", new Employee[] {emp2a, emp2b});

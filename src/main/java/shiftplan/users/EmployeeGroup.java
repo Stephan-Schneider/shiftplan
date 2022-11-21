@@ -28,6 +28,10 @@ public class EmployeeGroup {
         }
     }
 
+    public static List<Employee> getAllEmployees() {
+        return allEmployees;
+    }
+
     public static Employee[] getEmployeesInShiftOrder() {
         Employee[] shiftOrderedEmployees = new Employee[allEmployees.size()];
         for (Employee employee : allEmployees) {
@@ -41,6 +45,10 @@ public class EmployeeGroup {
 
     public String getGroupName() {
         return groupName;
+    }
+
+    public Employee[] getEmployees() {
+        return employees;
     }
 
     public List<LocalDate> getHomeOfficePlan() {
