@@ -1,0 +1,207 @@
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Schichtplan Luftfracht Export</title>
+		<style type="text/css">
+			@page {
+				size: a4;
+			}
+			@media print {				
+
+			}
+
+			html,
+        	body {
+            	margin: 0;
+            	padding: 0;
+            	height: 100%;
+            	font-size: 1.0em;
+            	background-color: #fff;
+        	}
+
+        	main {
+        		margin: 50px 100px 50px 100px;
+        	}
+
+        	header {
+        		margin: 50px 100px 0 100px;
+        	}
+
+        	section.legend {
+        		margin-bottom: 50px;
+        	}
+
+        	section.legend > h2 {
+        		font-size: small;
+        	}
+
+        	section.legend table {
+        		font-size: x-small;
+        	}
+
+        	section.legend table th {
+        		text-align: left;
+        		padding: 3px;
+        	}
+
+			#shiftplan {
+				width: 100%;
+				border: 1px solid black;
+				border-collapse: collapse;
+				font-size: 1.0em;				
+			}
+
+			#shiftplan > thead th {
+				padding: 5px;
+				border: 1px solid black;
+			}
+
+			#shiftplan > tbody tr:nth-child(odd) {
+				background-color: #fff;
+			}
+
+			#shiftplan > tbody tr:nth-child(even) {
+				background-color: #ddd;
+			}
+
+			#shiftplan > tbody th {
+				padding: 5px;
+				font-size: 0.9em;
+				font-weight: normal;
+				border: 1px solid black;
+			}
+
+			#shiftplan > tbody td {
+				padding: 5px;
+				font-size: 0.8em;
+				border: 1px solid black;
+
+			}
+		</style>
+	</head>
+	<body>
+		<header>
+			<h1>Schichtplan Luftfracht Export für 2022</h1>
+		</header>
+		<main>
+			<section class="legend">
+				<h2>Legende</h2>
+				<table id="employee-details">
+					<thead>
+						<tr>
+							<th>Mitarbeiter</th>
+							<th>Homeoffice-Gruppe</th>
+							<th>Partizipation</th>							
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td style="color: #0099ee;">Horst</td>
+							<td>Gruppe A</td>
+							<td>HO / Spätdienst</td>
+						</tr>
+						<tr>
+							<td style="color: darkred;">Sabine</td>
+							<td>Gruppe A</td>
+							<td>HO / Spätdienst</td>
+						</tr>
+						<tr>
+							<td style="color: yellowgreen;">Katrin</td>
+							<td>Gruppe B</td>
+							<td>HO / Spätdienst</td>
+						</tr>
+						<tr>
+							<td style="color: orangered;">Wilhelm</td>
+							<td>Gruppe B</td>
+							<td>HO / Spätdienst</td>
+						</tr>
+						<tr>
+							<td style="color: brown;">Peter</td>
+							<td>Gruppe C</td>
+							<td>HO / Spätdienst</td>
+						</tr>
+						<tr>
+							<td style="color: darkgoldenrod;">Susanne</td>
+							<td>Gruppe C</td>
+							<td>HO / Spätdienst</td>
+						</tr>						
+					</tbody>
+				</table>
+			</section>
+			<table id="shiftplan">
+				<thead>
+					<tr>
+						<th>KW</th>
+						<th>Von -> Bis</th>
+						<th colspan="2">Montag</th>
+						<th colspan="2">Dienstag</th>
+						<th colspan="2">Mittwoch</th>
+						<th colspan="2">Donnerstag</th>
+						<th colspan="2">Freitag</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<th></th>
+						<th></th>
+						<th>Home Office</th>
+						<th>Spätdienst</th>
+						<th>Home Office</th>
+						<th>Spätdienst</th>
+						<th>Home Office</th>
+						<th>Spätdienst</th>
+						<th>Home Office</th>
+						<th>Spätdienst</th>
+						<th>Home Office</th>
+						<th>Spätdienst</th>
+					</tr>
+					<tr>
+						<td>1</td>
+						<td>03.01.-07.01</td>
+						<td>Gruppe A</td>
+						<td>Horst</td>
+						<td>Gruppe A</td>
+						<td>Horst</td>
+						<td>Gruppe B</td>
+						<td>Horst</td>
+						<td>Gruppe B</td>
+						<td>Horst</td>
+						<td>Gruppe C</td>
+						<td>Willi</td>
+					</tr>
+					<tr>
+						<td>2</td>
+						<td>10.01.-14.01</td>
+						<td>Gruppe A</td>
+						<td>Horst</td>
+						<td>Gruppe A</td>
+						<td>Horst</td>
+						<td>Gruppe B</td>
+						<td>Horst</td>
+						<td>Gruppe B</td>
+						<td>Horst</td>
+						<td>Gruppe C</td>
+						<td>Willi</td>
+					</tr>
+					<tr>
+						<td>3</td>
+						<td>17.01.-21.01</td>
+						<td>Gruppe A</td>
+						<td>Horst</td>
+						<td>Gruppe A</td>
+						<td>Horst</td>
+						<td>Gruppe B</td>
+						<td>Horst</td>
+						<td>Gruppe B</td>
+						<td>Horst</td>
+						<td>Gruppe C</td>
+						<td>Willi</td>
+					</tr>
+				</tbody>
+			</table>
+		</main>
+	</body>
+</html>

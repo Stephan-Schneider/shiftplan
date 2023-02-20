@@ -25,7 +25,7 @@ public enum TemplateProcessor {
         cfg = new Configuration(Configuration.VERSION_2_3_31);
         cfg.setDirectoryForTemplateLoading(getTemplateDir());
         cfg.setDefaultEncoding("UTF-8");
-        cfg.setObjectWrapper(new Java8ObjectWrapper(Configuration.VERSION_2_3_31));
+        cfg.setObjectWrapper(new Java8ObjectWrapper(Configuration.VERSION_2_3_31)); // java.time.LocalDate - Formatierung !!
         cfg.setTemplateExceptionHandler(TemplateExceptionHandler.HTML_DEBUG_HANDLER);
         cfg.setLogTemplateExceptions(false);
         cfg.setWrapUncheckedExceptions(true);
@@ -47,7 +47,7 @@ public enum TemplateProcessor {
         dataModel.put("startDate", start) // LocalDate
         dataModel.put("endDate", end)  // LocalDate
         dataModel.put("employees", employees) // Array
-        dataModel.put("shiftPlan", shiftPlan) // HashMap<LocalDate, Shift>
+        dataModel.put("shiftPlan", shiftPlan) // HashMap<String, Shift>
         dataModel.put("calendar", calendar) // List<LocalDate[]>
          */
         assert dataModel != null && !dataModel.isEmpty();

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<shiftplan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:noNamespaceSchemaLocation="shiftplan.xsd">
+    <public-holidays>
+        <holidays year="2023">
+            <holiday name="Neujahr" date="2023-01-01"/>
+            <holiday name="Karfreitag" date="2023-04-07"/>
+            <holiday name="Ostermontag" date="2023-04-10"/>
+            <holiday name="Tag der Arbeit" date="2023-05-01"/>
+            <holiday name="Christi Himmelfahrt" date="2023-05-18"/>
+            <holiday name="Pfingstmontag" date="2023-05-29"/>
+            <holiday name="Fronleichnam" date="2023-06-08"/>
+            <holiday name="Tag der dt. Einheit" date="2023-10-03"/>
+            <holiday name="Heiligabend" date="2023-12-24"/>
+            <holiday name="1. Weihnachtstag" date="2023-12-25"/>
+            <holiday name="2. Weihnachtstag" date="2023-12-26"/>
+            <holiday name="Sylvester" date="2023-12-31"/>           
+        </holidays>
+    </public-holidays>
+    <employee-groups>
+        <employee-group>
+            <groupname>Gruppe A</groupname>
+            <employees>
+                <employee>
+                    <name>Hugo</name>
+                    <lastname>Meier</lastname>
+                    <lateshift-only>false</lateshift-only>
+                    <lateshift-order>1</lateshift-order>
+                    <color>#336699</color>
+                </employee>
+                <employee>
+                    <name>Anabel</name>
+                    <lastname>Schön</lastname>
+                    <lateshift-only>true</lateshift-only>
+                    <lateshift-order>2</lateshift-order>
+                    <color>#ff0000</color>
+                </employee>
+                <employee>
+                    <name></name>
+                    <lastname></lastname>
+                    <lateshift-only>true</lateshift-only>
+                    <lateshift-order></lateshift-order>
+                    <color></color>
+                </employee>
+            </employees>
+        </employee-group>
+        <employee-group>
+            <groupname>Gruppe B</groupname>
+            <employees>
+                <employee>
+                    <name></name>                
+                    <lastname></lastname>                
+                    <lateshift-only>true</lateshift-only>                
+                    <lateshift-order></lateshift-order>                
+                    <color></color>
+                </employee>
+            </employees>
+            
+        </employee-group>
+    </employee-groups>
+</shiftplan>

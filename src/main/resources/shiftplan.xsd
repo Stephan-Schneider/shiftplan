@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="shiftplan">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="public-holidays">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="holidays">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="holiday" maxOccurs="unbounded">
+                                            <xs:complexType>
+                                                <xs:attribute name="name" use="optional" type="xs:string"/>
+                                                <xs:attribute name="date" use="required" type="xs:date"/>
+                                            </xs:complexType>
+                                        </xs:element>
+                                    </xs:sequence>
+                                    <xs:attribute name="year" type="xs:int" use="required" />
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="employee-groups">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="employee-group" maxOccurs="unbounded">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="groupname" type="xs:string" />
+                                        <xs:element name="employees">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element name="employee" maxOccurs="unbounded">
+                                                        <xs:complexType>
+                                                            <xs:sequence>
+                                                                <xs:element name="name" type="xs:string" />
+                                                                <xs:element name="lastname" type="xs:string" />
+                                                                <xs:element name="lateshift-only" type="xs:boolean" />
+                                                                <xs:element name="lateshift-order" default="-1" type="xs:int" />
+                                                                <xs:element name="color" type="xs:string" />
+                                                            </xs:sequence>
+                                                        </xs:complexType>
+                                                    </xs:element>
+                                                </xs:sequence>
+                                            </xs:complexType>
+                                        </xs:element>
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>
