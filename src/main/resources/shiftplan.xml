@@ -1,62 +1,83 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <shiftplan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
- xsi:noNamespaceSchemaLocation="shiftplan.xsd">
+ xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2023" start-date="2023-04-01" end-date="2023-05-31">
     <public-holidays>
-        <holidays year="2023">
-            <holiday name="Neujahr" date="2023-01-01"/>
-            <holiday name="Karfreitag" date="2023-04-07"/>
-            <holiday name="Ostermontag" date="2023-04-10"/>
-            <holiday name="Tag der Arbeit" date="2023-05-01"/>
-            <holiday name="Christi Himmelfahrt" date="2023-05-18"/>
-            <holiday name="Pfingstmontag" date="2023-05-29"/>
-            <holiday name="Fronleichnam" date="2023-06-08"/>
-            <holiday name="Tag der dt. Einheit" date="2023-10-03"/>
-            <holiday name="Heiligabend" date="2023-12-24"/>
-            <holiday name="1. Weihnachtstag" date="2023-12-25"/>
-            <holiday name="2. Weihnachtstag" date="2023-12-26"/>
-            <holiday name="Sylvester" date="2023-12-31"/>           
-        </holidays>
+        <holiday name="Neujahr" date="2023-01-01"/>
+        <holiday name="Karfreitag" date="2023-04-07"/>
+        <holiday name="Ostermontag" date="2023-04-10"/>
+        <holiday name="Tag der Arbeit" date="2023-05-01"/>
+        <holiday name="Christi Himmelfahrt" date="2023-05-18"/>
+        <holiday name="Pfingstmontag" date="2023-05-29"/>
+        <holiday name="Fronleichnam" date="2023-06-08"/>
+        <holiday name="Tag der dt. Einheit" date="2023-10-03"/>
+        <holiday name="Heiligabend" date="2023-12-24"/>
+        <holiday name="1. Weihnachtstag" date="2023-12-25"/>
+        <holiday name="2. Weihnachtstag" date="2023-12-26"/>
+        <holiday name="Sylvester" date="2023-12-31"/>
     </public-holidays>
+    <shift-duration>
+        <home-office>2</home-office>
+        <max-late-shift>5</max-late-shift> <!-- Die tatsächliche Anzahl von Spätschichten kann in Abhängigkeit vom Homeoffice-Plan abweichen -->
+    </shift-duration>
     <employee-groups>
         <employee-group>
-            <groupname>Gruppe A</groupname>
+            <group-name>Gruppe A</group-name>
             <employees>
                 <employee>
-                    <name>Hugo</name>
-                    <lastname>Meier</lastname>
+                    <name>Greta</name>
+                    <lastname>Thünberg</lastname>
                     <lateshift-only>false</lateshift-only>
-                    <lateshift-order>1</lateshift-order>
+                    <lateshift-order>5</lateshift-order>
                     <color>#336699</color>
+                    <ooo>
+                        <absence start="2023-05-02" end="2023-05-05"/>
+                        <absence start="2023-06-12" end="2023-06-23"/>
+                    </ooo>
                 </employee>
                 <employee>
-                    <name>Anabel</name>
-                    <lastname>Schön</lastname>
+                    <name>Luisa</name>
+                    <lastname>Neubauer</lastname>
                     <lateshift-only>true</lateshift-only>
                     <lateshift-order>2</lateshift-order>
                     <color>#ff0000</color>
                 </employee>
+            </employees>
+        </employee-group>
+        <employee-group>
+            <group-name>Gruppe B</group-name>
+            <employees>
                 <employee>
-                    <name></name>
-                    <lastname></lastname>
+                    <name>Alexander</name>
+                    <lastname>Gauland</lastname>
                     <lateshift-only>true</lateshift-only>
-                    <lateshift-order></lateshift-order>
-                    <color></color>
+                    <lateshift-order>4</lateshift-order>
+                </employee>
+                <employee>
+                    <name>Beatrix</name>
+                    <lastname>von Storch</lastname>
+                    <lateshift-only>false</lateshift-only>
+                    <lateshift-order>1</lateshift-order>
                 </employee>
             </employees>
         </employee-group>
         <employee-group>
-            <groupname>Gruppe B</groupname>
+            <group-name>Gruppe C</group-name>
             <employees>
                 <employee>
-                    <name></name>                
-                    <lastname></lastname>                
-                    <lateshift-only>true</lateshift-only>                
-                    <lateshift-order></lateshift-order>                
-                    <color></color>
+                    <name>Donald</name>
+                    <lastname>Trump</lastname>
+                    <lateshift-only>false</lateshift-only>
+                    <lateshift-order>3</lateshift-order>
+                </employee>
+                <employee>
+                    <name>Silvio</name>
+                    <lastname>Berlusconi</lastname>
+                    <lateshift-only>false</lateshift-only>
+                    <lateshift-order>0</lateshift-order>
+                    <color>#ff00aa</color>
                 </employee>
             </employees>
-            
         </employee-group>
     </employee-groups>
 </shiftplan>

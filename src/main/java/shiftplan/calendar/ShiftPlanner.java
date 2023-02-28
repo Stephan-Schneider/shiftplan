@@ -17,35 +17,51 @@ import java.util.TreeMap;
 public class ShiftPlanner {
 
     private static final Logger logger = LogManager.getLogger(ShiftPlanner.class);
-    private static final List<LocalDate> holidays;
+    private static List<LocalDate> holidays;
     private final LocalDate startDate;
     private final LocalDate endDate;
 
-    static {
-        holidays = List.of(
-                LocalDate.of(2022, 1, 1), // Neujahr
-                LocalDate.of(2022, 4, 15), // Karfreitag
-                LocalDate.of(2022, 4, 18), // Ostermontag
-                LocalDate.of(2022, 6,6), // Pfingstmontag
-                LocalDate.of(2022, 10, 3), // Tag der Einheit
-                LocalDate.of(2022, 12,26) // 2. Weihnachtstag
-        );
+
+    public static ShiftPlanner newInstance(
+            List<LocalDate> holidayList, int year, LocalDate startDate, LocalDate endDate)
+            throws IllegalArgumentException {
+        assert holidayList != null;
+        if (year < LocalDate.now().getYear()) {
+            throw new IllegalArgumentException(
+                    "Ungültiges Jahr: " + year +
+                            ". Schichtpläne können nur für das aktuelle oder kommende Jahre erstellt werden");
+        }
+        holidays = holidayList;
+
+        ShiftPlanner shiftPlanner;
+        if (startDate == null) {
+            shiftPlanner = new ShiftPlanner(year);
+        } else if (endDate != null) {
+            if (startDate.isAfter(endDate)) {
+                LocalDate temp = startDate;
+                startDate = endDate;
+                endDate = temp;
+            }
+            shiftPlanner = new ShiftPlanner(startDate, endDate);
+        } else {
+            shiftPlanner = new ShiftPlanner(startDate);
+        }
+        return shiftPlanner;
     }
 
-    public ShiftPlanner() {
-        // Plan für das gesamte, aktuelle Jahr
-        int year = LocalDate.now().getYear();
+    private ShiftPlanner(int year) {
+        // Plan für das gesamte in 'shiftplan.xml angegebene Jahr
         startDate = LocalDate.of(year,1,1);
         endDate = LocalDate.of(year +1, 1,1);
     }
 
-    public ShiftPlanner(LocalDate startDate) {
+    private ShiftPlanner(LocalDate startDate) {
         // Plan für ein Benutzer-definiertes Startdatum bis Ende desselben Jahres
         this.startDate = startDate;
         endDate = LocalDate.of(startDate.getYear() +1, 1,1);
     }
 
-    public ShiftPlanner(LocalDate startDate, LocalDate endDate) {
+    private ShiftPlanner(LocalDate startDate, LocalDate endDate) {
         // Plan für ein Benutzer-definiertes Start- und Enddatum
         this.startDate = startDate;
         this.endDate = endDate.plusDays(1);
@@ -120,7 +136,12 @@ public class ShiftPlanner {
         logger.debug("Current date: {} // currentEmployeeIndex: {} // shiftDayCount: {}",
                 currentDate, currentEmployeeIndex, shiftDayCount);
         Employee employee = employees[currentEmployeeIndex];
-        if (shiftDayCount >= shiftPeriod || (employee.isHomeOfficeDay(currentDate) && !employee.isLateShiftOnly())) {
+        //if (shiftDayCount > shiftPeriod || (employee.isHomeOfficeDay(currentDate) && !employee.isLateShiftOnly())) { // > oder >= ?
+        if (shiftDayCount > shiftPeriod || employee.isHomeOfficeDay(currentDate)) {
+            // Der Wechsel zum nächsten Angestellten erfolgt, wenn der aktuelle Spätschichtinhaber die vorgeschriebene
+            // Anzahl von Spätschichten erreicht hat oder das aktuelle Datum auf einen Homeoffice-Tag dieses Angestellten
+            // fällt, unabhängig davon, ob der Angestellte am Homeoffice-Zyklus tatsächlich teilnimmt
+            // oder nicht (<max-lateshift-only>true|false</max-lateshift-only>
             shiftDayCount = -1;
             ++currentEmployeeIndex;
             if (currentEmployeeIndex >= employees.length) {
