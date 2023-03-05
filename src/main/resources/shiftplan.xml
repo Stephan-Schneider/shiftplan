@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <shiftplan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
- xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2023" start-date="2023-04-01" end-date="2023-05-31">
+ xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2023" start-date="2023-03-01" end-date="2023-05-31">
     <public-holidays>
         <holiday name="Neujahr" date="2023-01-01"/>
         <holiday name="Karfreitag" date="2023-04-07"/>
@@ -17,8 +17,10 @@
         <holiday name="Sylvester" date="2023-12-31"/>
     </public-holidays>
     <shift-duration>
-        <home-office>2</home-office>
-        <max-late-shift>5</max-late-shift> <!-- Die tatsächliche Anzahl von Spätschichten kann in Abhängigkeit vom Homeoffice-Plan abweichen -->
+        <max-home-per-week>2</max-home-per-week> <!-- Maximale Anzahl von Homeoffice-Tagen pro Woche -->
+        <max-home-per-month>8</max-home-per-month> <!-- Maximale Anzahl von Homeoffice-Tagen pro Monat -->
+        <home-office>2</home-office> <!-- Geplante Anzahl von Homeoffice-Tagen pro Woche -->
+        <max-late-shift>4</max-late-shift> <!-- Die tatsächliche Anzahl von Spätschichten kann in Abhängigkeit vom Homeoffice-Plan abweichen -->
     </shift-duration>
     <employee-groups>
         <employee-group>
@@ -28,7 +30,7 @@
                     <name>Greta</name>
                     <lastname>Thünberg</lastname>
                     <lateshift-only>false</lateshift-only>
-                    <lateshift-order>5</lateshift-order>
+                    <lateshift-order>6</lateshift-order>
                     <color>#336699</color>
                     <ooo>
                         <absence start="2023-05-02" end="2023-05-05"/>
@@ -39,7 +41,7 @@
                     <name>Luisa</name>
                     <lastname>Neubauer</lastname>
                     <lateshift-only>true</lateshift-only>
-                    <lateshift-order>2</lateshift-order>
+                    <lateshift-order>3</lateshift-order>
                     <color>#ff0000</color>
                 </employee>
             </employees>
@@ -51,16 +53,40 @@
                     <name>Alexander</name>
                     <lastname>Gauland</lastname>
                     <lateshift-only>true</lateshift-only>
-                    <lateshift-order>4</lateshift-order>
+                    <lateshift-order>5</lateshift-order>
+                    <color>brown</color>
                 </employee>
                 <employee>
                     <name>Beatrix</name>
                     <lastname>von Storch</lastname>
                     <lateshift-only>false</lateshift-only>
-                    <lateshift-order>1</lateshift-order>
+                    <lateshift-order>2</lateshift-order>
+                    <color>blue</color>
                 </employee>
             </employees>
         </employee-group>
+        <!--<employee-group>
+            <group-name>Leergruppe 1</group-name>
+            <employees>
+                <employee>
+                    <name>Test</name>
+                    <lastname>Test</lastname>
+                    <lateshift-only>false</lateshift-only>
+                    <lateshift-order>-10</lateshift-order>
+                </employee>
+            </employees>
+        </employee-group>
+        <employee-group>
+            <group-name>Leergruppe 2</group-name>
+            <employees>
+                <employee>
+                    <name>Mr.</name>
+                    <lastname>Nobody</lastname>
+                    <lateshift-only>false</lateshift-only>
+                    <lateshift-order>-11</lateshift-order>
+                </employee>
+            </employees>
+        </employee-group>-->
         <employee-group>
             <group-name>Gruppe C</group-name>
             <employees>
@@ -68,13 +94,14 @@
                     <name>Donald</name>
                     <lastname>Trump</lastname>
                     <lateshift-only>false</lateshift-only>
-                    <lateshift-order>3</lateshift-order>
+                    <lateshift-order>4</lateshift-order>
+                    <color>darkgoldenrod</color>
                 </employee>
                 <employee>
                     <name>Silvio</name>
                     <lastname>Berlusconi</lastname>
                     <lateshift-only>false</lateshift-only>
-                    <lateshift-order>0</lateshift-order>
+                    <lateshift-order>1</lateshift-order>
                     <color>#ff00aa</color>
                 </employee>
             </employees>

@@ -48,7 +48,7 @@ public enum TemplateProcessor {
         dataModel.put("endDate", end)  // LocalDate
         dataModel.put("employees", employees) // Array
         dataModel.put("shiftPlan", shiftPlan) // HashMap<String, Shift>
-        dataModel.put("calendar", calendar) // List<LocalDate[]>
+        dataModel.put("calendar", calendar) // Map<Integer, LocalDate[]>
          */
         assert dataModel != null && !dataModel.isEmpty();
         assert templateFile != null && templateFile.endsWith(".ftl");

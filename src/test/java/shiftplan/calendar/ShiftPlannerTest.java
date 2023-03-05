@@ -4,11 +4,14 @@ import freemarker.template.TemplateException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jdom2.JDOMException;
+import org.jsoup.nodes.Document;
 import org.junit.jupiter.api.Test;
 import shiftplan.data.DocumentParser;
+import shiftplan.document.DocGenerator;
 import shiftplan.document.TemplateProcessor;
 import shiftplan.users.Employee;
 import shiftplan.users.EmployeeGroup;
+import shiftplan.users.HomeOfficeRecord;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -109,10 +112,36 @@ class ShiftPlannerTest {
     }
 
     @Test
+    void testGeneratedHOOptions() throws IOException, JDOMException {
+        DocumentParser docParser = new DocumentParser();
+        docParser.parseDocument();
+
+        LocalDate startDate = docParser.getStartDate();
+        LocalDate endDate = docParser.getEndDate();
+        List<LocalDate> holidays = docParser.getHolidays();
+        List<EmployeeGroup> groups = docParser.getEmployeeGroupList();
+        int homeOfficeDuration = docParser.getHomeOfficeDuration();
+        int maxPerWeek = docParser.getMaxHomeOfficeDaysPerWeek();
+        int maxPerMonth = docParser.getMaxHomeOfficeDaysPerMonth();
+
+        ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(holidays, docParser.getYear(), startDate, endDate);
+        shiftPlanner.createHomeOfficePlan(groups, homeOfficeDuration);
+
+        for (EmployeeGroup group : groups) {
+            Map<Integer, List<LocalDate>> hoDatesByMonth = group.getHomeOfficeDaysByMonth();
+            hoDatesByMonth.keySet().forEach(
+                    month -> logger.debug("{}: Home Office Daten in Monat {}:{}", group.getGroupName(), month,
+                            hoDatesByMonth.get(month)));
+            List<HomeOfficeRecord> hoRecords =
+                    group.calculateHomeOfficeOptionByMonth(docParser.getYear(), maxPerWeek, maxPerMonth);
+            for (HomeOfficeRecord record : hoRecords) {
+                logger.debug("{}: {}", group.getGroupName(), record);
+            }
+        }
+    }
+
+    @Test
     void createLateShiftPlan() throws IOException, JDOMException {
-        //TODO Testläufe bisher nur mit 6 Mitarbeitern in 3 Gruppen (entspricht der aktuellen Organisation der
-        // Abteilung). Es sollten aber auch weitere Variationen getestet werden, z.B.: Änderung der Mitarbeiterzahl,
-        // Änderung der Gruppenanzahl, der Länge der Homeoffice-Phasen
         DocumentParser docParser = new DocumentParser();
         docParser.parseDocument();
 
@@ -167,27 +196,40 @@ class ShiftPlannerTest {
     }
 
     @Test
-    void createCalendar() throws TemplateException, IOException {
-        List<EmployeeGroup> groups = createGroups();
-        ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(new ArrayList<>(), 2023, null, null);
+    void createCalendar() throws TemplateException, IOException, JDOMException {
+        //TODO Testläufe bisher nur mit 6 Mitarbeitern in 3 Gruppen (entspricht der aktuellen Organisation der
+        // Abteilung). Es sollten aber auch weitere Variationen getestet werden, z.B.: Änderung der Mitarbeiterzahl,
+        // Änderung der Gruppenanzahl, der Länge der Homeoffice-Phasen
+        DocumentParser docParser = new DocumentParser();
+        docParser.parseDocument();
 
-        shiftPlanner.createHomeOfficePlan(groups, 2);
+        LocalDate startDate = docParser.getStartDate();
+        LocalDate endDate = docParser.getEndDate();
+        List<LocalDate> holidays = docParser.getHolidays();
+        List<EmployeeGroup> groups = docParser.getEmployeeGroupList();
+        int homeOfficeDuration = docParser.getHomeOfficeDuration();
+        int lateShiftDuration = docParser.getMaxLateShiftDuration();
+        ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(holidays, docParser.getYear(), startDate, endDate);
+
+        shiftPlanner.createHomeOfficePlan(groups, homeOfficeDuration);
         Employee[] employees = EmployeeGroup.getEmployeesInShiftOrder();
-        shiftPlanner.createLateShiftPlan(employees,5);
+        shiftPlanner.createLateShiftPlan(employees,lateShiftDuration);
 
         Map<String, Shift> shiftPlan = shiftPlanner.createShiftPlan(groups);
-        LocalDate from = LocalDate.of(2022,1,1);
-        LocalDate to = LocalDate.of(2022,12,31);
 
-        ShiftCalendar shiftCalendar = new ShiftCalendar();
-        LocalDate startOfFirstWeek = shiftCalendar.getFirstCalendarWeekStart(from.getYear());
-        List<LocalDate[]> calendar = shiftCalendar.createCalendar(from.getYear(), startOfFirstWeek);
+        ShiftCalendar shiftCalendar = new ShiftCalendar(docParser.getYear());
+        Map<Integer, LocalDate[]> calendar = shiftCalendar.createCalendar(startDate, endDate);
 
         List<Employee> allEmployees = EmployeeGroup.getAllEmployees();
 
+        Map<String, Integer> shiftInfo = new HashMap<>();
+        shiftInfo.put("homeOfficeDuration", homeOfficeDuration);
+        shiftInfo.put("lateShiftDuration", lateShiftDuration);
+
         Map<String, Object> dataModel = new HashMap<>();
-        dataModel.put("startDate", from);
-        dataModel.put("endDate", to);
+        dataModel.put("startDate", startDate);
+        dataModel.put("endDate", endDate);
+        dataModel.put("shiftInfo", shiftInfo);
         dataModel.put("employees", allEmployees);
         dataModel.put("shiftPlan", shiftPlan);
         dataModel.put("calendar", calendar);
@@ -195,11 +237,15 @@ class ShiftPlannerTest {
         TemplateProcessor processor = TemplateProcessor.INSTANCE;
         StringWriter output = processor.processDocumentTemplate(dataModel, "shiftplan.ftl");
 
-        File outputFile = Path.of("/", "home", "stephan", "schichtplan.html").toFile();
+        DocGenerator docGenerator = new DocGenerator();
+        Document document = docGenerator.getRawHTML(output.toString());
+        docGenerator.createPDF(document, Path.of(System.getProperty("user.home"), "shiftplan.pdf"));
+
+        /*File outputFile = Path.of("/", "home", "stephan", "schichtplan.html").toFile();
         BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile, StandardCharsets.UTF_8));
 
         writer.write(output.toString());
-        writer.flush();
+        writer.flush();*/
     }
 
     private List<EmployeeGroup> createGroups() {

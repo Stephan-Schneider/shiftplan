@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Employee {
+public class Employee implements Comparable<Employee> {
 
     private final String name;
     private final String lastName;
@@ -87,5 +87,10 @@ public class Employee {
         sb.append(", lateShiftOnly=").append(lateShiftOnly);
         sb.append('}');
         return sb.toString();
+    }
+
+    @Override
+    public int compareTo(Employee other) {
+        return Integer.compare(getLateShiftOrder(), other.getLateShiftOrder());
     }
 }

@@ -8,23 +8,37 @@
     <title>Schichtplan Luftfracht Export</title>
     <style>
         @page {
-            size: a4;
+            size: a4 landscape;
+
+            @bottom-center {
+                content: 'Seite ' counter(page) ' von ' counter(pages);
+            }
         }
         @media print {
-
+            html, body {
+                height: 99%;
+            }
+            h1 {
+                font-size: 10pt;
+            }
+            #shiftplan {
+                font-family: serif;
+                font-size: 9pt;
+            }
         }
 
         html,
         body {
             margin: 0;
             padding: 0;
-            height: 100%;
+            /*height: auto;*/
             font-size: 1.0em;
             background-color: #fff;
         }
 
         main {
             margin: 50px 100px 50px 100px;
+            height: auto;
         }
 
         header {
@@ -39,20 +53,45 @@
             font-size: small;
         }
 
-        section.legend table {
+        #employee-details {
             font-size: x-small;
+            float: left;
         }
 
-        section.legend table th {
+        #employee-details th {
             text-align: left;
             padding: 3px;
+        }
+
+        #shift-info {
+            margin-left: 100px;
+            font-size: x-small;
+            float: left;
+        }
+
+        #shift-info td.left {
+            font-weight: bold;
+        }
+
+        div.clear-float {
+            clear: left;
         }
 
         #shiftplan {
             width: 100%;
             border: 1px solid black;
             border-collapse: collapse;
-            font-size: 1.0em;
+            -fs-table-paginate: paginate;
+            -page-break-inside: auto;
+        }
+
+        #shiftplan thead {
+            display: table-header-group;
+        }
+
+        #shiftplan tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
         }
 
         #shiftplan > thead th {
@@ -103,22 +142,39 @@
                 <#assign isHomeOffice>
                     <#if employee.lateShiftOnly == false>
                         Ja
+                    <#else>
+                        Nein
                     </#if>
                 </#assign>
                 <#assign isLateShift>
                     <#if employee.lateShiftOrder gte 0>
                         Ja
+                    <#else>
+                        Nein
                     </#if>
                 </#assign>
             <tr>
-                <td style="color: ${employee.highlightColor};">${employee.name}</td>
+                <td style="color: ${employee.highlightColor};">${employee.name} ${employee.lastName}</td>
                 <td>${employee.employeeGroupName}</td>
-                <td>${isHomeOffice!"Nein"}</td>
-                <td>${isLateShift!"Nein"}</td>
+                <td>${isHomeOffice}</td>
+                <td>${isLateShift}</td>
             </tr>
             </#list>
             </tbody>
         </table>
+        <table id="shift-info">
+            <tbody>
+            <tr>
+                <td class="left">Dauer Homeoffice-Zyklus:</td>
+                <td>${shiftInfo["homeOfficeDuration"]} Tage je Gruppe</td>
+            </tr>
+            <tr>
+                <td class="left">Dauer Spätschicht-Zyklus:</td>
+                <td>${shiftInfo["lateShiftDuration"]} Tage je Mitarbeiter (Maximum)</td>
+            </tr>
+            </tbody>
+        </table>
+        <div class="clear-float"></div>
     </section>
     <table id="shiftplan">
         <thead>
@@ -147,9 +203,9 @@
             <th>Home Office</th>
             <th>Spätdienst</th>
         </tr>
-        <#list calendar as calendarWeek>
+        <#list calendar as cwIndex, calendarWeek>
             <tr>
-                <td>${calendarWeek?index +1}</td>
+                <td>${cwIndex}</td>
                 <td>${calendarWeek[0].format("dd.MM.")} - ${calendarWeek[6].format("dd.MM.")}</td>
             <#list calendarWeek as workday>
                 <#if workday?index gt 4>
