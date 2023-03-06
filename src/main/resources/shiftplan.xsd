@@ -18,6 +18,8 @@
                 <xs:element name="shift-duration">
                     <xs:complexType>
                         <xs:sequence>
+                            <xs:element name="max-home-per-week" type="xs:int" default="2"/>
+                            <xs:element name="max-home-per-month" type="xs:int" default="8"/>
                             <xs:element name="home-office" type="xs:int" default="2"/>
                             <xs:element name="max-late-shift" type="xs:int" default="5"/>
                         </xs:sequence>

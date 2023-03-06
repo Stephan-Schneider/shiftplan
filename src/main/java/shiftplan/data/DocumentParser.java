@@ -29,6 +29,8 @@ public class DocumentParser {
     private int year;
     private LocalDate startDate;
     private LocalDate endDate;
+    private int maxHomeOfficeDaysPerWeek;
+    private int maxHomeOfficeDaysPerMonth;
     private int homeOfficeDuration;
     private int maxLateShiftDuration;
     private final List<LocalDate> holidays = new ArrayList<>();
@@ -81,6 +83,14 @@ public class DocumentParser {
 
     public LocalDate getEndDate() {
         return endDate;
+    }
+
+    public int getMaxHomeOfficeDaysPerWeek() {
+        return maxHomeOfficeDaysPerWeek;
+    }
+
+    public int getMaxHomeOfficeDaysPerMonth() {
+        return maxHomeOfficeDaysPerMonth;
     }
 
     public int getHomeOfficeDuration() {
@@ -140,6 +150,8 @@ public class DocumentParser {
 
         logger.info("Dauer der Home-Office- und Spätschicht-Phasen werden ausgelesen");
         Element shiftDuration = rootNode.getChild("shift-duration");
+        maxHomeOfficeDaysPerWeek = Integer.parseInt(shiftDuration.getChildText("max-home-per-week"));
+        maxHomeOfficeDaysPerMonth = Integer.parseInt(shiftDuration.getChildText("max-home-per-month"));
         homeOfficeDuration = Integer.parseInt(shiftDuration.getChildText("home-office"));
         maxLateShiftDuration = Integer.parseInt(shiftDuration.getChildText("max-late-shift"));
         logger.info("Dauer der Homeoffice-Phase: {} / Maximale Dauer der Spätschicht-Phase: {}",

@@ -209,9 +209,19 @@ class ShiftPlannerTest {
         List<EmployeeGroup> groups = docParser.getEmployeeGroupList();
         int homeOfficeDuration = docParser.getHomeOfficeDuration();
         int lateShiftDuration = docParser.getMaxLateShiftDuration();
+        int maxPerWeek = docParser.getMaxHomeOfficeDaysPerWeek();
+        int maxPerMonth = docParser.getMaxHomeOfficeDaysPerMonth();
+
         ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(holidays, docParser.getYear(), startDate, endDate);
 
         shiftPlanner.createHomeOfficePlan(groups, homeOfficeDuration);
+        groups.forEach(employeeGroup -> {
+            List<HomeOfficeRecord> homeOfficeRecords = employeeGroup.calculateHomeOfficeOptionByMonth(
+                    docParser.getYear(), maxPerWeek, maxPerMonth
+            );
+            HomeOfficeRecord.addRecord(homeOfficeRecords);
+        });
+
         Employee[] employees = EmployeeGroup.getEmployeesInShiftOrder();
         shiftPlanner.createLateShiftPlan(employees,lateShiftDuration);
 
@@ -233,6 +243,7 @@ class ShiftPlannerTest {
         dataModel.put("employees", allEmployees);
         dataModel.put("shiftPlan", shiftPlan);
         dataModel.put("calendar", calendar);
+        dataModel.put("homeOfficeRecords", HomeOfficeRecord.getAllRecords());
 
         TemplateProcessor processor = TemplateProcessor.INSTANCE;
         StringWriter output = processor.processDocumentTemplate(dataModel, "shiftplan.ftl");

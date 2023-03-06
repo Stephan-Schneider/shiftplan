@@ -21,7 +21,7 @@
             h1 {
                 font-size: 10pt;
             }
-            #shiftplan {
+            #shiftplan, #homeoffice-control {
                 font-family: serif;
                 font-size: 9pt;
             }
@@ -119,6 +119,60 @@
             font-size: 0.8em;
             border: 1px solid black;
         }
+
+        #homeoffice-control-section {
+            margin-top: 100px;
+        }
+
+        #homeoffice-control caption {
+            page-break-before: always;
+            margin-bottom: 5px;
+            border-bottom: 1px solid silver;
+            font-style: italic;
+        }
+
+        #homeoffice-control {
+            width: 50%;
+            margin: 15px auto 0 auto;
+            border: 1px solid black;
+            border-collapse: collapse;
+            -page-break-inside: auto;
+        }
+
+        #homeoffice-control thead {
+            display: table-header-group;
+        }
+
+        #homeoffice-control tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+
+        #homeoffice-control > thead th {
+            padding: 5px;
+            border: 1px solid black;
+        }
+
+        #homeoffice-control > tbody tr:nth-child(odd) {
+            background-color: #fff;
+        }
+
+        #homeoffice-control > tbody tr:nth-child(even) {
+            background-color: #ddd;
+        }
+
+        #homeoffice-control > tbody th {
+            padding: 5px;
+            font-size: 0.9em;
+            font-weight: normal;
+            border: 1px solid black;
+        }
+
+        #homeoffice-control > tbody td {
+            padding: 5px;
+            font-size: 0.8em;
+            border: 1px solid black;
+        }
     </style>
 </head>
 <body>
@@ -176,52 +230,91 @@
         </table>
         <div class="clear-float"></div>
     </section>
-    <table id="shiftplan">
-        <thead>
-        <tr>
-            <th>KW</th>
-            <th>Von -> Bis</th>
-            <th colspan="2">Montag</th>
-            <th colspan="2">Dienstag</th>
-            <th colspan="2">Mittwoch</th>
-            <th colspan="2">Donnerstag</th>
-            <th colspan="2">Freitag</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr>
-            <th></th>
-            <th></th>
-            <th>Home Office</th>
-            <th>Spätdienst</th>
-            <th>Home Office</th>
-            <th>Spätdienst</th>
-            <th>Home Office</th>
-            <th>Spätdienst</th>
-            <th>Home Office</th>
-            <th>Spätdienst</th>
-            <th>Home Office</th>
-            <th>Spätdienst</th>
-        </tr>
-        <#list calendar as cwIndex, calendarWeek>
+    <section>
+        <table id="shiftplan">
+            <thead>
             <tr>
-                <td>${cwIndex}</td>
-                <td>${calendarWeek[0].format("dd.MM.")} - ${calendarWeek[6].format("dd.MM.")}</td>
-            <#list calendarWeek as workday>
-                <#if workday?index gt 4>
-                    <#continue>
-                </#if>
-                <#if shiftPlan[workday]??>
-                    <td>${shiftPlan[workday].homeOfficeGroup.groupName}</td>
-                    <td style="color: ${shiftPlan[workday].lateShift.highlightColor}">${shiftPlan[workday].lateShift.name}</td>
-                <#else>
-                    <td colspan="2">Kein Arbeitstag</td>
-                </#if>
-            </#list>
+                <th>KW</th>
+                <th>Von -> Bis</th>
+                <th colspan="2">Montag</th>
+                <th colspan="2">Dienstag</th>
+                <th colspan="2">Mittwoch</th>
+                <th colspan="2">Donnerstag</th>
+                <th colspan="2">Freitag</th>
             </tr>
-        </#list>
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+            <tr>
+                <th></th>
+                <th></th>
+                <th>Home Office</th>
+                <th>Spätdienst</th>
+                <th>Home Office</th>
+                <th>Spätdienst</th>
+                <th>Home Office</th>
+                <th>Spätdienst</th>
+                <th>Home Office</th>
+                <th>Spätdienst</th>
+                <th>Home Office</th>
+                <th>Spätdienst</th>
+            </tr>
+            <#list calendar as cwIndex, calendarWeek>
+                <tr>
+                    <td>${cwIndex}</td>
+                    <td>${calendarWeek[0].format("dd.MM.")} - ${calendarWeek[6].format("dd.MM.")}</td>
+                    <#list calendarWeek as workday>
+                        <#if workday?index gt 4>
+                            <#continue>
+                        </#if>
+                        <#if shiftPlan[workday]??>
+                            <td>${shiftPlan[workday].homeOfficeGroup.groupName}</td>
+                            <td style="color: ${shiftPlan[workday].lateShift.highlightColor}">${shiftPlan[workday].lateShift.name}</td>
+                        <#else>
+                            <td colspan="2">Kein Arbeitstag</td>
+                        </#if>
+                    </#list>
+                </tr>
+            </#list>
+            </tbody>
+        </table>
+    </section>
+    <section id="homeoffice-control-section">
+        <table id="homeoffice-control">
+            <caption>
+                <h4>Evaluierung der Homeoffice-Zuteilungen vom ${startDate.format("dd.MM.yyyy")} bis ${endDate.format("dd.MM.yyyy")}</h4>
+            </caption>
+            <thead>
+                <tr>
+                    <th>HO-Gruppe</th>
+                    <th>Monat</th>
+                    <th>HO-Tage im Plan</th>
+                    <th>Nicht zugewiesene HO-Tage</th>
+                </tr>
+            </thead>
+            <tbody>
+                <#list homeOfficeRecords as record>
+                    <tr>
+                        <td>${record.groupName}</td>
+                        <td>${record.monthName}</td>
+                        <td <#if record.notAssigned == 0>style="color: green"</#if>>
+                            <#if record.optionsInPlan == 1>
+                                ${record.optionsInPlan} ${"Tage"?keep_before("e")}
+                            <#else>
+                                ${record.optionsInPlan} Tage
+                            </#if>
+                        </td>
+                        <td <#if record.notAssigned == 0>style="color: green"</#if>>
+                            <#if record.notAssigned == 1>
+                                ${record.notAssigned} ${"Tage"?keep_before("e")}
+                            <#else>
+                                ${record.notAssigned} Tage
+                            </#if>
+                        </td>
+                    </tr>
+                </#list>
+            </tbody>
+        </table>
+    </section>
 </main>
 </body>
 </html>
