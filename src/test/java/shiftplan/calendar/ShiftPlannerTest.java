@@ -246,6 +246,7 @@ class ShiftPlannerTest {
         dataModel.put("homeOfficeRecords", HomeOfficeRecord.getAllRecords());
 
         TemplateProcessor processor = TemplateProcessor.INSTANCE;
+        processor.initConfiguration();
         StringWriter output = processor.processDocumentTemplate(dataModel, "shiftplan.ftl");
 
         DocGenerator docGenerator = new DocGenerator();

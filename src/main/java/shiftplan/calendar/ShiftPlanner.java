@@ -33,6 +33,8 @@ public class ShiftPlanner {
         }
         holidays = holidayList;
 
+        logger.info("SiftPlanner wird erstellt");
+
         ShiftPlanner shiftPlanner;
         if (startDate == null) {
             shiftPlanner = new ShiftPlanner(year);
@@ -68,6 +70,7 @@ public class ShiftPlanner {
     }
 
     public Map<String, Shift> createShiftPlan(List<EmployeeGroup> employeeGroups) {
+        logger.info("Schichtplan wird erstellt");
         Map<String, Shift> shiftPlan = new TreeMap<>();
 
         employeeGroups.forEach(employeeGroup -> {
@@ -89,6 +92,9 @@ public class ShiftPlanner {
 
     public void createHomeOfficePlan(List<EmployeeGroup> employeeGroups, int homeOfficeDayCount) {
         assert employeeGroups != null && !employeeGroups.isEmpty();
+
+        logger.info("HomeofficePlan wird erstellt");
+
         int forwardCount = employeeGroups.size() * homeOfficeDayCount;
         logger.debug("forwardCount = {}", forwardCount);
         int startIndex = 0;
@@ -107,10 +113,13 @@ public class ShiftPlanner {
             startIndex += homeOfficeDayCount;
             logger.debug("startIndex (nach Ende der inneren (for-) Schleife: {}", startIndex);
         }
+        logger.info("Erstellung des Homeoffice-Plans abgeschlossen");
     }
 
     public void createLateShiftPlan(Employee[] employees, int shiftPeriod) {
         assert employees != null && employees.length > 0;
+
+        logger.info("Spätschichtplan wird erstellt");
 
         int shiftDayCount = 1;
         int employeeIndex = 0;

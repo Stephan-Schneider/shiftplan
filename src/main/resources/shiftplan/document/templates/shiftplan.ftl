@@ -285,8 +285,8 @@
             </caption>
             <thead>
                 <tr>
-                    <th>HO-Gruppe</th>
                     <th>Monat</th>
+                    <th>HO-Gruppe</th>
                     <th>HO-Tage im Plan</th>
                     <th>Nicht zugewiesene HO-Tage</th>
                 </tr>
@@ -294,8 +294,8 @@
             <tbody>
                 <#list homeOfficeRecords as record>
                     <tr>
-                        <td>${record.groupName}</td>
                         <td>${record.monthName}</td>
+                        <td>${record.groupName}</td>
                         <td <#if record.notAssigned == 0>style="color: green"</#if>>
                             <#if record.optionsInPlan == 1>
                                 ${record.optionsInPlan} ${"Tage"?keep_before("e")}

@@ -21,6 +21,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class DocumentParser {
 
@@ -47,10 +48,13 @@ public class DocumentParser {
     }
 
     public DocumentParser(String xmlPath, String xsdPath) throws IOException, JDOMException, IllegalArgumentException {
-        Path path = Path.of(xmlPath);
-        if (Files.isRegularFile(path) && Files.isReadable(path)) {
+        Path xmlPathObj = Path.of(xmlPath);
+        Path xsdPathObj = Path.of(xsdPath);
+        if (Files.isRegularFile(xmlPathObj) && Files.isReadable(xmlPathObj)
+                && Files.isRegularFile(xsdPathObj) && Files.isReadable(xsdPathObj)) {
+            logger.debug("XMLDatei und XSD-Datei existieren und sind lesbar");
             SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory(xsdPath));
-            doc = saxBuilder.build(path.toFile());
+            doc = saxBuilder.build(xmlPathObj.toFile());
         } else {
             throw new IllegalArgumentException(xmlPath + " nicht gefunden");
         }
@@ -65,11 +69,16 @@ public class DocumentParser {
         // A) die Anwendung nicht in ein JAR-Archiv gepackt ist (d.h. die Anwendung liegt in "explodierter" Form vor)
         // B) die Anwendung in ein JAR-Archiv gepackt ist und der Pfad zu einer außerhalb des Archivs liegenden
         //    Schema-Datei übergeben wird.
+        File schemaFile;
         URL url = this.getClass().getClassLoader().getResource(xsdPath);
-        if (url == null) {
-            throw new IllegalArgumentException(xsdPath + " nicht gefunden!");
+        // Testen, ob die XSD-Datei als Resource geladen werden kann
+        if (url != null) {
+            schemaFile = new File(url.getFile());
+            return new XMLReaderXSDFactory(schemaFile);
         }
-        File schemaFile = new File(url.getFile());
+        // Falls die Resource mit der o.a. Methode nicht gefunden wird, ist davon auszugehen, dass es sich bei
+        // <xsdPath> um den absoluten Pfad zu einer externen Resource handelt. Es wird ein Path-/File-Objekt erstellt.
+        schemaFile = Path.of(xsdPath).toFile();
         return new XMLReaderXSDFactory(schemaFile);
     }
 

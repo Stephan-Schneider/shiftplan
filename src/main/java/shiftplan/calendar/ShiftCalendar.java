@@ -6,6 +6,8 @@ import org.apache.logging.log4j.Logger;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.Month;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.*;
 import java.util.stream.IntStream;
 
@@ -70,7 +72,13 @@ public class ShiftCalendar {
         return calendarWeeks;
     }
 
-    Map<Integer, LocalDate[]> createCalendar(LocalDate start, LocalDate end) {
+    public Map<Integer, LocalDate[]> createCalendar(LocalDate start, LocalDate end) {
+        assert start != null && end != null;
+
+        logger.info("Kalender von {} bis {} wird erstellt",
+                start.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)),
+                end.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)));
+
         LocalDate firstDayInCW = getFirstCalendarWeekStart(calendarForYear);
 
         if (start.getMonth() == Month.JANUARY) {

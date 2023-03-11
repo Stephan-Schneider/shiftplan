@@ -5,6 +5,7 @@ module shiftplan {
     requires org.jsoup;
     requires openhtmltopdf.pdfbox;
     requires org.jdom2;
+    requires commons.cli;
     exports shiftplan.users to freemarker;
     exports shiftplan.calendar to freemarker;
 }
