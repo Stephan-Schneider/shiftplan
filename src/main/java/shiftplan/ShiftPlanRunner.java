@@ -2,6 +2,7 @@ package shiftplan;
 
 import freemarker.template.TemplateException;
 import org.apache.commons.cli.*;
+import org.apache.commons.mail.EmailException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jdom2.JDOMException;
@@ -12,6 +13,7 @@ import shiftplan.calendar.ShiftPlanner;
 import shiftplan.data.DocumentParser;
 import shiftplan.document.DocGenerator;
 import shiftplan.document.TemplateProcessor;
+import shiftplan.publish.EmailDispatch;
 import shiftplan.users.Employee;
 import shiftplan.users.EmployeeGroup;
 import shiftplan.users.HomeOfficeRecord;
@@ -21,7 +23,6 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,7 +77,7 @@ public class ShiftPlanRunner {
         return dataModel;
     }
 
-    private void createPDF(String templateDir, Map<String, Object> dataModel) throws IOException, TemplateException {
+    private Path createPDF(String templateDir, Map<String, Object> dataModel) throws IOException, TemplateException {
         TemplateProcessor processor = TemplateProcessor.INSTANCE;
         if (templateDir == null || templateDir.isEmpty()) {
             // Das Template-Verzeichnis wird von der FTL Konfiguration beim Aufruf von <initConfiguration> ohne
@@ -90,10 +91,17 @@ public class ShiftPlanRunner {
         }
         StringWriter output = processor.processDocumentTemplate(dataModel, "shiftplan.ftl");
 
+        // Pfad für den zu erstellenden Schichtplan
+        Path pathToPDF = Path.of(
+                "/", "tmp",
+                "Schichtplan_" + dataModel.get("startDate") + "_bis_" + dataModel.get("endDate") + ".pdf"
+        );
+
         DocGenerator docGenerator = new DocGenerator();
         Document document = docGenerator.getRawHTML(output.toString());
-        docGenerator.createPDF(document, Path.of(System.getProperty("user.home"),
-                "Schichtplan" + dataModel.get("startDate") + "_bis_" + dataModel.get("endDate") + ".pdf"));
+        docGenerator.createPDF(document, pathToPDF);
+
+        return pathToPDF;
     }
 
     private DocumentParser getDocumentParser(String xmlPath) throws IOException, JDOMException {
@@ -182,7 +190,9 @@ public class ShiftPlanRunner {
         //      Emailversand aktiviert
         // -s, --sendMail: Option nur angeben, wenn Emailversand aktiviert werden soll - setzt eine Konfigurationsdatei
         //      mit vollständigen SMTP-Parametern und Angabe eines gültigen Passworts voraus
-        logger.info("ShiftplanRunner gestartet mit den Argumenten: {}", Arrays.toString(args));
+
+        // Nicht auskommentieren - keine Ausgabe des Passworts in Klartext !!
+        // logger.trace("ShiftplanRunner gestartet mit den Argumenten: {}", Arrays.toString(args));
 
         Options options = null;
         CommandLine cmd = null;
@@ -239,9 +249,20 @@ public class ShiftPlanRunner {
         try {
             DocumentParser parser = shiftPlanRunner.getDocumentParser(xmlPath);
             Map<String, Object> dataModel = shiftPlanRunner.createShiftPlan(parser);
-            shiftPlanRunner.createPDF(templatePath, dataModel);
-        } catch (IOException | JDOMException | TemplateException ex) {
+            Path attachment = shiftPlanRunner.createPDF(templatePath, dataModel);
+
+            if (sendMail) {
+                if (password != null && !password.isBlank()) {
+                    EmailDispatch emailDispatch = new EmailDispatch(configPath);
+                    emailDispatch.sendMail(EmployeeGroup.getAllEmployees(), attachment, password);
+                }
+            }
+        } catch (IOException | JDOMException ex) {
             logger.fatal("shiftplan.xml|shiftplan.xsd können nicht gelesen werden", ex);
+        } catch (TemplateException ex) {
+            logger.fatal("Das FTL-Template kann nicht verarbeitet werden", ex);
+        } catch (EmailException ex) {
+            logger.error("Der Emailversand des Schichtplans ist gescheitert", ex);
         }
     }
 }

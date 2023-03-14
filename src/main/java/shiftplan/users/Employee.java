@@ -8,9 +8,10 @@ public class Employee implements Comparable<Employee> {
 
     private final String name;
     private final String lastName;
+    private final int lateShiftOrder; // x < 0 = Keine Spätschicht !!
     private boolean lateShiftOnly = false;
-    private final int lateShiftOrder; // -1 = Keine Spätschicht !!
     private String highlightColor;
+    private String email;
     private final List<LocalDate> lateShiftPlan;
     private EmployeeGroup employeeGroup;
 
@@ -29,6 +30,11 @@ public class Employee implements Comparable<Employee> {
     public Employee(String name, String lastName, int shiftOrder, boolean lateShiftOnly, String highlightColor) {
         this(name, lastName, shiftOrder, lateShiftOnly);
         this.highlightColor = highlightColor;
+    }
+
+    public Employee(String name, String lastName, int shiftOrder, boolean lateShiftOnly, String highlightColor, String email) {
+        this(name, lastName, shiftOrder, lateShiftOnly, highlightColor);
+        this.email = email;
     }
 
     public String getName() {
@@ -52,6 +58,10 @@ public class Employee implements Comparable<Employee> {
             return "#000000";
         }
         return highlightColor;
+    }
+
+    public String getEmail() {
+        return email;
     }
 
     void setEmployeeGroup(EmployeeGroup group) {
@@ -85,6 +95,7 @@ public class Employee implements Comparable<Employee> {
         sb.append(", lastName='").append(lastName).append('\'');
         sb.append(", lateShiftOrder='").append(lateShiftOrder).append('\'');
         sb.append(", lateShiftOnly=").append(lateShiftOnly);
+        sb.append(", email='").append(email).append('\'');
         sb.append('}');
         return sb.toString();
     }

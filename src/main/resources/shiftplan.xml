@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <shiftplan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
- xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2023" start-date="2023-03-01" end-date="2023-06-30">
+ xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2023" start-date="2023-03" end-date="2023-04">
+
     <public-holidays>
         <holiday name="Neujahr" date="2023-01-01"/>
         <holiday name="Karfreitag" date="2023-04-07"/>
@@ -32,6 +33,7 @@
                     <lateshift-only>false</lateshift-only>
                     <lateshift-order>6</lateshift-order>
                     <color>#336699</color>
+                    <email>stephanschneider34@hotmail.com</email>
                     <ooo>
                         <absence start="2023-05-02" end="2023-05-05"/>
                         <absence start="2023-06-12" end="2023-06-23"/>
@@ -43,6 +45,7 @@
                     <lateshift-only>true</lateshift-only>
                     <lateshift-order>3</lateshift-order>
                     <color>#ff0000</color>
+                    <email>stephan.god.schneider@googlemail.com</email>
                 </employee>
             </employees>
         </employee-group>
@@ -65,28 +68,6 @@
                 </employee>
             </employees>
         </employee-group>
-        <!--<employee-group>
-            <group-name>Leergruppe 1</group-name>
-            <employees>
-                <employee>
-                    <name>Test</name>
-                    <lastname>Test</lastname>
-                    <lateshift-only>false</lateshift-only>
-                    <lateshift-order>-10</lateshift-order>
-                </employee>
-            </employees>
-        </employee-group>
-        <employee-group>
-            <group-name>Leergruppe 2</group-name>
-            <employees>
-                <employee>
-                    <name>Mr.</name>
-                    <lastname>Nobody</lastname>
-                    <lateshift-only>false</lateshift-only>
-                    <lateshift-order>-11</lateshift-order>
-                </employee>
-            </employees>
-        </employee-group>-->
         <employee-group>
             <group-name>Gruppe C</group-name>
             <employees>

@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+    <!-- Datentyp Email-Adresse -->
+    <xs:simpleType name="emailAddress">
+        <xs:restriction base="xs:string">
+            <xs:pattern value=".+@[^\.].*\.[a-z]{2,}"/>
+        </xs:restriction>
+    </xs:simpleType>
+
     <xs:element name="shiftplan">
         <xs:complexType>
             <xs:sequence>
@@ -43,6 +51,7 @@
                                                                 <xs:element name="lateshift-only" type="xs:boolean" />
                                                                 <xs:element name="lateshift-order" default="-1" type="xs:int" />
                                                                 <xs:element name="color" type="xs:string" minOccurs="0"/>
+                                                                <xs:element name="email" type="emailAddress" minOccurs="0"/>
                                                                 <xs:element name="ooo" minOccurs="0">
                                                                     <xs:complexType>
                                                                         <xs:sequence>
@@ -68,9 +77,9 @@
                     </xs:complexType>
                 </xs:element>
             </xs:sequence>
-            <xs:attribute name="for" use="required" type="xs:int"/>
-            <xs:attribute name="start-date" use="optional" type="xs:date"/>
-            <xs:attribute name="end-date" use="optional" type="xs:date"/>
+            <xs:attribute name="for" use="required" type="xs:gYear"/>
+            <xs:attribute name="start-date" use="optional" type="xs:gYearMonth"/>
+            <xs:attribute name="end-date" use="optional" type="xs:gYearMonth"/>
         </xs:complexType>
     </xs:element>
 </xs:schema>

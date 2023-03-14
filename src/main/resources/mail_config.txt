@@ -1,0 +1,20 @@
+# SMTP - Verbindungsparameter
+
+# folgende Parameter sind erforderlich:
+# server: SMTP-Serveradresse des E-Mail-Providers (in Doku des Providers nachschauen)
+# port: SMTP-Port (in Doku des Providers nachschauen)
+# startTLSEnabled: true, wenn StartTLS zur Verschlüsselung verwendet wird, sonst false (siehe Doku des E-Mail-Providers)
+# userId: E-Mail-Adresse des Kontoinhabers (Absenderadresse)
+
+# Optionale Parameter:
+# userName: Name des Kontoinhabers (erscheint als Absender der Nachricht)
+# subject: Betreffzeile der Email (falls nicht angegeben, erscheint 'Schichtplan' in der Betreffzeile)
+# message: Eine kurze Nachricht (nicht länger als eine Zeile in dieser Konfigurationsdatei)
+
+server=mail.gmx.net
+port = 587 # Standardports: SSL: 465 // StartTLS: 587
+startTLSEnabled = true
+userId = stephan.geert.schneider@gmx.de
+userName = Stephan Schneider
+subject = Schichtplan für 2023
+message = Hallo zusammen,<br><br>im Anhang ist der neue Schichtplan.<br><br>Viele Grüße.

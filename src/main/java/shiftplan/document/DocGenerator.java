@@ -5,7 +5,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.helper.W3CDom;
 import org.jsoup.nodes.Document;
 
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -23,7 +22,7 @@ public class DocGenerator {
         return document;
     }
 
-    public File createPDF(Document document, Path outputFile) throws IOException {
+    public void createPDF(Document document, Path outputFile) throws IOException {
         try (OutputStream os = new FileOutputStream(outputFile.toFile())) {
             PdfRendererBuilder builder = new PdfRendererBuilder();
             builder.withUri(String.valueOf(outputFile.toUri()));
@@ -31,6 +30,5 @@ public class DocGenerator {
             builder.withW3cDocument(new W3CDom().fromJsoup(document), "/");
             builder.run();
         }
-        return outputFile.toFile();
     }
 }

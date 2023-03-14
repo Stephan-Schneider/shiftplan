@@ -121,28 +121,38 @@ public class DocumentParser {
     public void parseDocument() {
         logger.info("Datenquelle 'shiftplan.xml' wird gelesen");
         Element rootNode = doc.getRootElement();
+
+        // XML-Datentyp: gYear
         year = Integer.parseInt(rootNode.getAttributeValue("for"));
         logger.info("Gültigkeit des Plans für das Jahr {}", year);
 
-        logger.info("Startdatum in {} wird ermittelt", year);
+        logger.info("Start-Monat in {} wird ermittelt", year);
+        // XML-Datentyp: gYearMonth (xxxx-xx)
         String startDateValue = rootNode.getAttributeValue("start-date");
-        if (startDateValue != null && !startDateValue.isBlank()) {
-            LocalDate startDateTemp = LocalDate.parse(startDateValue);
-            if (startDateTemp.getYear() == year) {
-                // Das Anfangsdatum muss sich innerhalb des im root-Element angegebenen Jahres befinden
-                startDate = startDateTemp;
+        if (startDateValue != null) {
+            String[] yearMonth = startDateValue.split("-");
+            int yearPart = Integer.parseInt(yearMonth[0]);
+            int monthPart = Integer.parseInt(yearMonth[1]);
+            // Das Anfangsdatum muss sich innerhalb des im root-Element angegebenen Jahres befinden
+            if (yearPart == year) {
+                startDate = LocalDate.of(yearPart, monthPart, 1);
             }
         }
         // Entweder das notierte Startdatum des Schichtplans oder das Default-Datum 01.01.20xx
         logger.info("Start-Datum: {}", startDate != null ? startDate : LocalDate.of(year, 1, 1));
 
         logger.info("Enddatum in {} wird ermittelt", year);
+        // XML-Datentyp: gYearMonth (xxxx-xx)
         String endDateValue = rootNode.getAttributeValue("end-date");
-        if (endDateValue != null && !endDateValue.isBlank()) {
-            LocalDate endDateTemp = LocalDate.parse(endDateValue);
-            if (endDateTemp.getYear() == year) {
-                // Das Enddatum muss sich innerhalb des im root-Element angegebenen Jahres befinden
-                endDate = endDateTemp;
+        if (endDateValue != null) {
+            String[] yearMonth = endDateValue.split("-");
+            int yearPart = Integer.parseInt(yearMonth[0]);
+            int monthPart = Integer.parseInt(yearMonth[1]);
+            // Das Enddatum muss sich innerhalb des im root-Element angegebenen Jahres befinden
+            if (yearPart == year) {
+                // Willkürlicher Tag um LocalDate-Objekt des durch <end-date> angegebenen Monat/Jahr zu erhalten
+                LocalDate temp = LocalDate.of(yearPart, monthPart, 1);
+                endDate = LocalDate.of(temp.getYear(), temp.getMonthValue(), temp.lengthOfMonth());
             }
         }
         // Entweder das notierte Enddatum des Schichtplans oder das Default-Datum 31.12.20xx
@@ -177,17 +187,13 @@ public class DocumentParser {
 
             employeeGroup.getChild("employees").getChildren("employee").forEach(employeeNode -> {
                 logger.info("Angestellte der Gruppe {} werden verarbeitet", groupName);
-                Employee employee;
                 String empName = employeeNode.getChildText("name");
                 String empLastName = employeeNode.getChildText("lastname");
                 int empShiftOrder = Integer.parseInt(employeeNode.getChildText("lateshift-order"));
                 boolean empLateShiftOnly = Boolean.parseBoolean(employeeNode.getChildText("lateshift-only"));
-                if (employeeNode.getChild("color") != null) {
-                    String color = employeeNode.getChildText("color");
-                    employee = new Employee(empName, empLastName, empShiftOrder, empLateShiftOnly, color);
-                } else {
-                    employee = new Employee(empName, empLastName, empShiftOrder, empLateShiftOnly);
-                }
+                String empColor = employeeNode.getChildText("color");
+                String empEmail = employeeNode.getChildText("email");
+                Employee employee = new Employee(empName, empLastName, empShiftOrder, empLateShiftOnly, empColor, empEmail);
                 logger.info("Employee {} wird Gruppe {} hinzugefügt", employee, groupName);
                 employees.add(employee);
             });

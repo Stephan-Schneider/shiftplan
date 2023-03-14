@@ -21,40 +21,62 @@ Die Ausführung der Anwendung erfordert **Java SE 17**
 * Nach dem Entpacken enthält das Installationsverzeichnis die Unterordner _'lib'_, _'XML'_ und _'Template'_
 * Aufruf der Anwendung durch das Shellskript shiftplan.sh, das sich direkt im Installationsverzeichnis befindet.
 
-Die Datei shiftplan.sh kann editiert werden, um folgende Parameter als Vorgabe-Einstellungen zu setzen:
-1. **xmlPath:** Pfad zum Ordner, der die Konfigurationsdatei shiftplan.xml und die Schema-Datei shiftplan.xsd enthält.
-In der Voreinstellung ist dies der Ordner \<Installationsverzeichis\>/XML. Die XML- und Schema-Datei können in 
-ein beliebiges, anderes Verzeichnis verschoben werden, der Pfad ist in diesem Fall entsprechend anzupassen. Beide
-Dateien müssen sich allerdings immer im gleichen Verzeichnis befinden!
-2. **templatePath:** Pfad zum Ordner, der das Template shiftplan.ftl enthält. In der Voreinstellung ist das der Ordner 
-\<Installationsverzeichnis\>/Template. Das CSS- und HTML-Markup des Templates können editiert werden.
-3. **configPath:** Der Pfad zur SMTP-Konfigurationsdatei. Die Datei muss folgendes Format haben:
-```
-from=name.lastname@example.net # Email-ID
-host=mail.server.com # SMTP-Server des Email-Providers
-```
+### shiftplan.sh
+Aufruf der Hilfefunktion mit dem Parameter **-h**
+Das Skript unterstützt folgende Parameter:
+* **-x:** Pfad zum Ordner, der die Konfigurationsdatei shiftplan.xml und die Schema-Datei shiftplan.xsd enthält. In der
+Voreinstellung ist dies der Ordner \<Installationsverzeichis\>/XML. Die XML- und Schema-Datei können jedoch in 
+ein beliebiges, anderes Verzeichnis verschoben werden, der Pfad ist in diesem Fall mit der Option **-x** entsprechend 
+anzugeben. Beide Dateien müssen sich allerdings immer im gleichen Verzeichnis befinden.
+* **-t:** Pfad zum Ordner, der das Template shiftplan.ftl enthält. In der Voreinstellung ist das der Ordner
+\<Installationsverzeichnis\>/Template. Falls das Template in ein anderes Verzeichnis verschoben wird, ist das neue
+Verzeichnis mit der Option **-t** anzugeben.
+* **-c:** Der Pfad zur SMTP-Konfigurationsdatei - befindet sich im Installationsverzeichnis und kann ebenfalls verschoben
+werden, wobei der neue Pfad zur Konfigurationsdatei mit der Option **-c** anzugeben ist.
+* **-s** Diese Option ist anzugeben, wenn ein automatisierter Emailversand des erstellten Schichtplans durch die 
+Anwendung durchgeführt werden soll. Wenn diese Option aktiv ist, wird der Benutzer anschließend aufgefordert, das
+Passwort für den Absender-Account einzugeben. Das Passwort wird nicht in der Konfigurationsdatei oder an irgend einem
+anderen Ort innerhalb der Anwendung gespeichert.
 
-Alle Parameter können auch auf der Kommandozeile übergeben werden und überschreiben dann die Vorgaben in shiftplan.sh.
-Die Parameter `smtpPassword` und `sendMail` müssen immer bei Aufruf angegeben werden, falls ein Emailversand des 
-Schichtplans durch die Anwendung durchgeführt werden soll.
+---
+## mail_config.txt
+In der Konfigurationsdatei 'mail_config.txt' im Installationsverzeichnis werden die SMTP Verbindungs-Parameter
+gesetzt:
+### Notwendige Parameter:
+**server**: SMTP-Serveradresse des E-Mail-Providers (in Doku des Providers nachschauen)\
+**port**: SMTP-Port (in Doku des Providers nachschauen)\
+**startTLSEnabled**: true, wenn StartTLS zur Verschlüsselung verwendet wird, sonst false (siehe Doku des E-Mail-Providers)\
+**userId**: E-Mail-Adresse des Kontoinhabers (Absenderadresse)
+
+### Optionale Parameter:
+**userName**: Name des Kontoinhabers (erscheint als Absender der Nachricht)\
+**subject**: Betreffzeile der Email (falls nicht angegeben, erscheint 'Schichtplan' in der Betreffzeile)\
+**message**: Eine kurze Nachricht (nicht länger als eine Zeile in der Konfigurationsdatei)\
+
+Kommentare werden mit der Raute (#) eingeleitet und können in einer eigenen Zeile oder hinter einem Schlüssel-Wert-Paar
+eingefügt werden.
+Leerzeilen sind erlaubt.
+Notation der Parameter und des zugeordneten Werts wie folgt: server=mail.gmx.net oder server = mail.gmx.net
+
+Die Anwendung enthält eine Template-Konfigurationsdatei mit weiteren Bespielen und Erläuterungen
 
 ---
 ## shiftplan.xml
 Die Parameter für die Erstellung des Schichtplans werden in **shiftplan.xml** festgelegt.\
-Das root-Element `shiftplan` hat ein Pflichtattribut `for`, das Jahr, in welchem der Schichtplan gelten soll enthaltend.
-Die optionalen Attribute `start-date` und `end-date` grenzen den Zeitraum innerhalb dieses Jahres weiter ein; das
-Datum sollte immer auf den Anfang oder Ende eines Monats fallen.\
+Das root-Element `shiftplan` hat ein Pflichtattribut `for`, dies ist das Jahr, in welchem der Schichtplan gelten
+soll enthaltend. Die optionalen Attribute `start-date` und `end-date` grenzen den Zeitraum innerhalb dieses Jahres
+weiter ein; Start- und Enddatum werden mit Jahr-Monat angegeben, z.B. 2023-03.\
 Das Element `public-holidays` schließt eine Sequenz von `holiday`-Elementen ein, mit denen gesetzliche Feiertage, die
 auf einen Werktag fallen, registriert werden.\
 Im Abschnitt `shift-duration` werden folgende Parameter festgelegt:
-- `max-home-per-week`: die maximal erlaubte Anzahl von Homeoffice-Tagen pro Woche.
-- `max-home-per-month`: die maximal erlaubte Anzahl von Homeoffice-Tagen pro Monat.
-- `home-office`: Homeoffice-Zyklus (Anzahl aufeinanderfolgender Tage, an welchen der MA optional von zu Hause arbeiten kann).
-- `max-late-shift`: Anzahl der aufeinanderfolgenden Spätschichttage eines MA's. Je nach Aufteilung der Schichten kann
+* `max-home-per-week`: die maximal erlaubte Anzahl von Homeoffice-Tagen pro Woche.
+* `max-home-per-month`: die maximal erlaubte Anzahl von Homeoffice-Tagen pro Monat.
+* `home-office`: Homeoffice-Zyklus (Anzahl aufeinanderfolgender Tage, an welchen der MA optional von zu Hause arbeiten kann).
+* `max-late-shift`: Anzahl der aufeinanderfolgenden Spätschichttage eines MA's. Je nach Aufteilung der Schichten kann
 die tatsächliche Anzahl der Tage geringer sein.
-- `employee-groups`: Für die Verteilung der Homeoffice-Tage werden die MA's in Gruppen eingeteilt. Jede Homeoffice-Gruppe
+* `employee-groups`: Für die Verteilung der Homeoffice-Tage werden die MA's in Gruppen eingeteilt. Jede Homeoffice-Gruppe
 hat einen eindeutigen Namen und eine Sequenz von einem oder mehreren Mitarbeitern
-- `employee`: Jeder MA wird mit Namen, Nachnamen, E-Mail, einer `boolean`-Flagge für nur Spätschichtteilnahme, der 
+* `employee`: Jeder MA wird mit Namen, Nachnamen, E-Mail, einer `boolean`-Flagge für nur Spätschichtteilnahme, der 
 Position des MA's bei der Verteilung der Spätschichten (die Reihenfolge hängt von der jeweiligen Homeoffice-Gruppe ab)
 und einer Farbe zur Hervorhebung des MA's im Schichtplan konfiguriert.
 
@@ -62,7 +84,6 @@ Weitere Details über die erlaubten XML-Elemente und Attribute, sowie deren Anor
 dürfen, können der Schema-Datei **shiftplan.xsd** entnommen werden.
 
 ---
-
 ## Lizenz
 MIT-License (siehe LICENSE.txt im Installationsverzeichnis)
 

@@ -82,7 +82,7 @@
             border: 1px solid black;
             border-collapse: collapse;
             -fs-table-paginate: paginate;
-            -page-break-inside: auto;
+            page-break-inside: auto;
         }
 
         #shiftplan thead {
@@ -136,7 +136,7 @@
             margin: 15px auto 0 auto;
             border: 1px solid black;
             border-collapse: collapse;
-            -page-break-inside: auto;
+            page-break-inside: auto;
         }
 
         #homeoffice-control thead {
