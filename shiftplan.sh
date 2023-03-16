@@ -63,7 +63,7 @@ if [ "$sendEmail" = true ]; then
   echo "Bitte das Passwort für den Email-Account des Absenders eingeben:"
   read -s -r smtpPassword
   # echo "$smtpPassword"
-  java --module-path shiftplan-1.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" -c "$configPath" -p "$smtpPassword" -s
+  java --module-path shiftplan-1.0.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" -c "$configPath" -p "$smtpPassword" -s
 else
-  java --module-path shiftplan-1.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath"
+  java --module-path shiftplan-1.0.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath"
 fi
