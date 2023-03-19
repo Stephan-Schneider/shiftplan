@@ -31,6 +31,8 @@ anzugeben. Beide Dateien müssen sich allerdings immer im gleichen Verzeichnis b
 * **-t:** Pfad zum Ordner, der das Template shiftplan.ftl enthält. In der Voreinstellung ist das der Ordner
 \<Installationsverzeichnis\>/Template. Falls das Template in ein anderes Verzeichnis verschoben wird, ist das neue
 Verzeichnis mit der Option **-t** anzugeben.
+* **-o** Pfad zum Speicherort (Verzeichnis) des generierten Schichtplans. Falls nicht angegeben, wird eine
+temporäre Datei im Standardverzeichnis für Temp-Dateien des jeweiligen Betriebssystems angelegt.
 * **-c:** Der Pfad zur SMTP-Konfigurationsdatei - befindet sich im Installationsverzeichnis und kann ebenfalls verschoben
 werden, wobei der neue Pfad zur Konfigurationsdatei mit der Option **-c** anzugeben ist.
 * **-s** Diese Option ist anzugeben, wenn ein automatisierter Emailversand des erstellten Schichtplans durch die 

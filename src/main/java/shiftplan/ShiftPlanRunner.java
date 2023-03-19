@@ -21,6 +21,7 @@ import shiftplan.users.HomeOfficeRecord;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -77,7 +78,8 @@ public class ShiftPlanRunner {
         return dataModel;
     }
 
-    private Path createPDF(String templateDir, Map<String, Object> dataModel) throws IOException, TemplateException {
+    private Path createPDF(String templateDir, Map<String, Object> dataModel, String outDir)
+            throws IOException, TemplateException {
         TemplateProcessor processor = TemplateProcessor.INSTANCE;
         if (templateDir == null || templateDir.isEmpty()) {
             // Das Template-Verzeichnis wird von der FTL Konfiguration beim Aufruf von <initConfiguration> ohne
@@ -92,10 +94,14 @@ public class ShiftPlanRunner {
         StringWriter output = processor.processDocumentTemplate(dataModel, "shiftplan.ftl");
 
         // Pfad für den zu erstellenden Schichtplan
-        Path pathToPDF = Path.of(
-                "/", "tmp",
-                "Schichtplan_" + dataModel.get("startDate") + "_bis_" + dataModel.get("endDate") + ".pdf"
-        );
+        Path pathToPDF;
+        String fileName = "Schichtplan_" + dataModel.get("startDate") + "_bis_" + dataModel.get("endDate");
+        if (outDir == null || outDir.isEmpty()) {
+            pathToPDF = Files.createTempFile(fileName, "pdf");
+            pathToPDF.toFile().deleteOnExit();
+        } else {
+            pathToPDF = Path.of(outDir, fileName + ".pdf");
+        }
 
         DocGenerator docGenerator = new DocGenerator();
         Document document = docGenerator.getRawHTML(output.toString());
@@ -143,6 +149,16 @@ public class ShiftPlanRunner {
                 .argName("Pfad")
                 .build();
 
+        Option outDirOption = Option
+                .builder("o")
+                .longOpt("outDir")
+                .desc("Pfad zum Speicherort (Verzeichnis) der Shiftplan-Datei. Falls nicht angegeben wird eine " +
+                        "temporäre Datei im Standardverzeichnis für Temp-Dateien des jeweiligen Betriebssystems " +
+                        "angelegt")
+                .hasArg()
+                .argName("Pfad")
+                .build();
+
         Option configOption = Option
                 .builder("c")
                 .longOpt("configPath")
@@ -174,9 +190,11 @@ public class ShiftPlanRunner {
         options.addOption(helpOption);
         options.addOption(xmlOption);
         options.addOption(templateOption);
+        options.addOption(outDirOption);
         options.addOption(configOption);
         options.addOption(pwdOption);
         options.addOption(sendMailOption);
+
 
         return options;
     }
@@ -184,12 +202,14 @@ public class ShiftPlanRunner {
     public static void main(String[] args) {
         // -x, --xmlPath: Enthält shiftplan.xml und shiftplan.xsd. Obligatorisch, wenn Anwendung in JAR gepackt ist.
         // -t, --templatePath: Enthält shiftplan.ftl (kann mit XML-Verzeichnis identisch sein). Obligatorisch,
-        //      wenn Anwendung in JAR gepackt ist
+        //          wenn Anwendung in JAR gepackt ist
+        // -o, --outDir: Pfad zum Speicherort (Verzeichnis) der Shiftplan-Datei. Falls nicht angegeben, wird eine
+        //          temporäre Datei im Standardverzeichnis für Temp-Dateien des jeweiligen Betriebssystems angelegt
         // -c, --configPath: Pfad zur Konfigurationsdatei (bei Emailversand aus dem Programm) - optional
         // -p, --smtpPassword: SMTP-Passwort (bei Emailversand aus dem Programm) - optional. Obligatorisch nur, wenn
-        //      Emailversand aktiviert
+        //          Emailversand aktiviert
         // -s, --sendMail: Option nur angeben, wenn Emailversand aktiviert werden soll - setzt eine Konfigurationsdatei
-        //      mit vollständigen SMTP-Parametern und Angabe eines gültigen Passworts voraus
+        //          mit vollständigen SMTP-Parametern und Angabe eines gültigen Passworts voraus
 
         // Nicht auskommentieren - keine Ausgabe des Passworts in Klartext !!
         // logger.trace("ShiftplanRunner gestartet mit den Argumenten: {}", Arrays.toString(args));
@@ -209,6 +229,7 @@ public class ShiftPlanRunner {
 
         String xmlPath = null;
         String templatePath = null;
+        String outDir = null;
         String configPath = null;
         String password = null;
         boolean sendMail = false;
@@ -226,6 +247,10 @@ public class ShiftPlanRunner {
             templatePath = cmd.getOptionValue("t");
         }
 
+        if (cmd.hasOption("o")) {
+            outDir = cmd.getOptionValue("o");
+        }
+
         if (cmd.hasOption("c")) {
             configPath = cmd.getOptionValue("c");
         }
@@ -241,15 +266,18 @@ public class ShiftPlanRunner {
         logger.info("shiftplan mit folgenden Argumenten aufgerufen:");
         logger.info("xmlPath: {}", xmlPath);
         logger.info("templatePath: {}", templatePath);
+        logger.info("outDir:  {}", outDir);
         logger.info("configPath: {}", configPath);
-        logger.info("smtpPassword: {}", password);
         logger.info("sendMail: {}", sendMail);
+
+
 
         ShiftPlanRunner shiftPlanRunner = new ShiftPlanRunner();
         try {
             DocumentParser parser = shiftPlanRunner.getDocumentParser(xmlPath);
             Map<String, Object> dataModel = shiftPlanRunner.createShiftPlan(parser);
-            Path attachment = shiftPlanRunner.createPDF(templatePath, dataModel);
+            Path attachment = shiftPlanRunner.createPDF(templatePath, dataModel, outDir);
+            logger.info("Neuer Schichtplan in '{}' gespeichert", attachment.toString());
 
             if (sendMail) {
                 if (password != null && !password.isBlank()) {
