@@ -107,7 +107,7 @@ public class ShiftCalendar {
 
         int rangeEnd = getMaxCalendarWeek(calendarForYear);
 
-        Map<Integer, LocalDate[]> calendarWeeks = new HashMap<>();
+        Map<Integer, LocalDate[]> calendarWeeks = new TreeMap<>(Integer::compareTo);
         IntStream.range(0, rangeEnd)
                 .takeWhile(cwIndex -> (cwIndex +1) <= endCw.calendarWeekIndex())
                 .forEach(cwIndex -> {
