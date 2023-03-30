@@ -120,6 +120,12 @@
             border: 1px solid black;
         }
 
+        #shiftplan > tbody td > ul {
+            margin: 0 0 0 5px;
+            padding-left: 0;
+            list-style-type: square;
+        }
+
         #homeoffice-control-section {
             margin-top: 100px;
         }
@@ -186,32 +192,29 @@
             <thead>
             <tr>
                 <th>Mitarbeiter</th>
-                <th>Homeoffice-Gruppe</th>
-                <th>Homeoffice</th>
-                <th>Spätdienst</th>
+                <th>Teilnahme</th>
+                <th>Backups</th>
             </tr>
             </thead>
             <tbody>
             <#list employees as employee>
-                <#assign isHomeOffice>
-                    <#if employee.lateShiftOnly == false>
-                        Ja
-                    <#else>
-                        Nein
-                    </#if>
-                </#assign>
-                <#assign isLateShift>
-                    <#if employee.lateShiftOrder gte 0>
-                        Ja
-                    <#else>
-                        Nein
-                    </#if>
+                <#assign participation_schema>
+                    <#switch employee.participationSchema.name()>
+                        <#case "HO">
+                            H
+                            <#break>
+                        <#case "LS">
+                            S
+                            <#break>
+                        <#case "HO_LS">
+                            H+S
+                            <#break>
+                    </#switch>
                 </#assign>
             <tr>
                 <td style="color: ${employee.highlightColor};">${employee.name} ${employee.lastName}</td>
-                <td>${employee.employeeGroupName}</td>
-                <td>${isHomeOffice}</td>
-                <td>${isLateShift}</td>
+                <td>${participation_schema}</td>
+                <td><#list employee.backups as backup>${backup.name} ${backup.lastName}<#sep>,</#list></td>
             </tr>
             </#list>
             </tbody>
@@ -219,12 +222,20 @@
         <table id="shift-info">
             <tbody>
             <tr>
-                <td class="left">Dauer Homeoffice-Zyklus:</td>
-                <td>${shiftInfo["homeOfficeDuration"]} Tage je Gruppe</td>
+                <td class="left">Dauer Spätschicht-Zyklus:</td>
+                <td>${shiftInfo["lateShiftDuration"]} Tage</td>
             </tr>
             <tr>
-                <td class="left">Dauer Spätschicht-Zyklus:</td>
-                <td>${shiftInfo["lateShiftDuration"]} Tage je Mitarbeiter (Maximum)</td>
+                <td class="left">Anzahl Homeoffice-Slots:</td>
+                <td>${shiftInfo["hoSlotsPerShift"]} Slots pro Tag</td>
+            </tr>
+            <tr>
+                <td class="left">Anzahl Homeoffice-Tage:</td>
+                <td>${shiftInfo["hoCreditsPerWeek"]} Tage pro MA / Woche</td>
+            </tr>
+            <tr>
+                <td class="left">Max. Anzahl von HO-Tagen:</td>
+                <td>${shiftInfo["maxHoDaysPerMonth"]} Tage pro Monat</td>
             </tr>
             </tbody>
         </table>
@@ -267,7 +278,22 @@
                             <#continue>
                         </#if>
                         <#if shiftPlan[workday]??>
-                            <td>${shiftPlan[workday].homeOfficeGroup.groupName}</td>
+                            <td>
+                                <#list shiftPlan[workday].employeesInHo>
+                                    <ul>
+                                        <#items as employee>
+                                            <#if employee??>
+                                                <li><span style="color: ${employee.highlightColor}">${employee.name}</span></li>
+                                            <#else>
+                                                <strong>Nicht besetzt</strong>
+                                            </#if>
+
+                                        </#items>
+                                    </ul>
+                                    <#else>
+                                        <p><strong>Nicht besetzt</strong></p>
+                                </#list>
+                            </td>
                             <td style="color: ${shiftPlan[workday].lateShift.highlightColor}">${shiftPlan[workday].lateShift.name}</td>
                         <#else>
                             <td colspan="2">Kein Arbeitstag</td>
@@ -286,7 +312,7 @@
             <thead>
                 <tr>
                     <th>Monat</th>
-                    <th>HO-Gruppe</th>
+                    <th>Name</th>
                     <th>HO-Tage im Plan</th>
                     <th>Nicht zugewiesene HO-Tage</th>
                 </tr>
@@ -295,7 +321,7 @@
                 <#list homeOfficeRecords as record>
                     <tr>
                         <td>${record.monthName}</td>
-                        <td>${record.groupName}</td>
+                        <td>${record.employeeName}</td>
                         <td <#if record.notAssigned == 0>style="color: green"</#if>>
                             <#if record.optionsInPlan == 1>
                                 ${record.optionsInPlan} ${"Tage"?keep_before("e")}

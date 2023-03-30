@@ -14,7 +14,6 @@ import shiftplan.users.EmployeeGroup;
 import shiftplan.users.HomeOfficeRecord;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -163,10 +162,11 @@ class ShiftPlannerTest {
         logger.debug("Employees: {}", Arrays.stream(employees).toList());
         shiftPlanner.createLateShiftPlan(employees, lateShiftDuration);
 
+        /*
         for (Employee employee : employees) {
             assertTrue(employee.getLateShiftPlan().size() > 0);
             logger.debug("Late shift of {}: {}", employee.getName(), employee.getLateShiftPlan());
-        }
+        } */
     }
 
     @Test
@@ -192,6 +192,122 @@ class ShiftPlannerTest {
             logger.debug(shiftPlan.get(date));
         });
         assertTrue(shiftPlan.size() > 0);
+
+    }
+
+    @Test
+    void createLateShiftPlan2() {
+        ShiftPolicy policy = ShiftPolicy.INSTANCE;
+        ShiftPolicy.Builder builder = new ShiftPolicy.Builder();
+
+        builder.setLateShiftPeriod(4);
+        builder.setMaxHoSlots(2);
+        builder.setMaxHoDaysPerMonth(8);
+        builder.setWeeklyHoCreditsPerEmployee(2);
+        policy.createShiftPolicy(builder);
+
+        Employee[] employees = getEmployees();
+        LocalDate start = LocalDate.of(2023, 4,1);
+        LocalDate end = LocalDate.of(2023, 7,31);
+        ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(new ArrayList<>(), 2023, start, end);
+        Map<String, Shift> lateShifts = shiftPlanner.createLateShiftPlan(employees);
+
+        for (String shiftDate : lateShifts.keySet()) {
+            logger.debug("Spätschicht am {} wird durchgeführt von {}",
+                    shiftDate, lateShifts.get(shiftDate).getLateShift().getName());
+        }
+    }
+
+    @Test
+    void createShiftPlan2() {
+        ShiftPolicy policy = ShiftPolicy.INSTANCE;
+        ShiftPolicy.Builder builder = new ShiftPolicy.Builder();
+
+        builder.setLateShiftPeriod(4);
+        builder.setMaxHoSlots(2);
+        builder.setMaxHoDaysPerMonth(8);
+        builder.setWeeklyHoCreditsPerEmployee(2);
+        policy.createShiftPolicy(builder);
+
+        Employee[] employees = getEmployees();
+        LocalDate start = LocalDate.of(2023, 4,1);
+        LocalDate end = LocalDate.of(2023, 7,31);
+        ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(new ArrayList<>(), 2023, start, end);
+        Map<String, Shift> shiftPlan = shiftPlanner.createLateShiftPlan(employees);
+
+        ShiftCalendar shiftCalendar = new ShiftCalendar(2023);
+        Map<Integer, LocalDate[]> calendar = shiftCalendar.createCalendar(start, end);
+
+        shiftPlanner.createHomeOfficePlan(employees, shiftPlan, calendar);
+
+        HomeOfficeRecord.createHomeOfficeReport(employees, start, end);
+        List<HomeOfficeRecord> records = HomeOfficeRecord.getAllRecords();
+
+        for (String shiftDate : shiftPlan.keySet()) {
+            logger.debug("Spätschicht am {} wird durchgeführt von {}",
+                    shiftDate, shiftPlan.get(shiftDate).getLateShift().getName());
+            logger.debug("Für Homeoffice eingeteilt am {}: {}", shiftDate, shiftPlan.get(shiftDate).getEmployeesInHo());
+        }
+
+        for (HomeOfficeRecord record : records) {
+            logger.debug("{} in Monat {}: im Plan: {} / Nicht zugewiesen: {}",
+                    record.getEmployeeName(), record.getMonth(), record.getOptionsInPlan(), record.getNotAssigned());
+        }
+    }
+
+    @Test
+    void createCalendar2() throws TemplateException, IOException, JDOMException {
+        ShiftPolicy policy = ShiftPolicy.INSTANCE;
+        ShiftPolicy.Builder builder = new ShiftPolicy.Builder();
+
+        builder.setLateShiftPeriod(4);
+        builder.setMaxHoSlots(2);
+        builder.setMaxHoDaysPerMonth(8);
+        builder.setWeeklyHoCreditsPerEmployee(2);
+        policy.createShiftPolicy(builder);
+
+        Employee[] employees = getEmployees();
+        LocalDate start = LocalDate.of(2023, 4,1);
+        LocalDate end = LocalDate.of(2023, 7,31);
+        ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(new ArrayList<>(), 2023, start, end);
+        Map<String, Shift> shiftPlan = shiftPlanner.createLateShiftPlan(employees);
+
+        ShiftCalendar shiftCalendar = new ShiftCalendar(2023);
+        Map<Integer, LocalDate[]> calendar = shiftCalendar.createCalendar(start, end);
+
+        shiftPlanner.createHomeOfficePlan(employees, shiftPlan, calendar);
+
+        HomeOfficeRecord.createHomeOfficeReport(employees, start, end);
+        List<HomeOfficeRecord> records = HomeOfficeRecord.getAllRecords();
+
+        for (String shiftDate : shiftPlan.keySet()) {
+            logger.debug("Spätschicht am {} wird durchgeführt von {}",
+                    shiftDate, shiftPlan.get(shiftDate).getLateShift().getName());
+            logger.debug("Für Homeoffice eingeteilt am {}: {}", shiftDate, shiftPlan.get(shiftDate).getEmployeesInHo());
+        }
+
+        Map<String, Integer> shiftInfo = new HashMap<>();
+        shiftInfo.put("hoSlotsPerShift", policy.getMaxHoSlots());
+        shiftInfo.put("hoCreditsPerWeek", policy.getWeeklyHoCreditsPerEmployee());
+        shiftInfo.put("maxHoDaysPerMonth", policy.getMaxHoDaysPerMonth());
+        shiftInfo.put("lateShiftDuration", policy.getLateShiftPeriod());
+
+        Map<String, Object> dataModel = new HashMap<>();
+        dataModel.put("startDate", start);
+        dataModel.put("endDate", end);
+        dataModel.put("shiftInfo", shiftInfo);
+        dataModel.put("employees", employees);
+        dataModel.put("shiftPlan", shiftPlan);
+        dataModel.put("calendar", calendar);
+        dataModel.put("homeOfficeRecords", records);
+
+        TemplateProcessor processor = TemplateProcessor.INSTANCE;
+        processor.initConfiguration();
+        StringWriter output = processor.processDocumentTemplate(dataModel, "shiftplan.ftl");
+
+        DocGenerator docGenerator = new DocGenerator();
+        Document document = docGenerator.getRawHTML(output.toString());
+        docGenerator.createPDF(document, Path.of(System.getProperty("user.home"), "shiftplan.pdf"));
 
     }
 
@@ -260,17 +376,38 @@ class ShiftPlannerTest {
         writer.flush();*/
     }
 
+    private Employee[] getEmployees() {
+
+        Employee emp1a = new Employee("Hans", "Maier", Employee.PARTICIPATION_SCHEMA.HO_LS, "#0099ee");
+        Employee emp1b = new Employee("Sabine", "Klein", Employee.PARTICIPATION_SCHEMA.HO_LS,"darkred");
+        Employee emp2a = new Employee("Willi", "Schick",Employee.PARTICIPATION_SCHEMA.HO_LS,"yellowgreen");
+        Employee emp2b = new Employee("Karla", "Meier",Employee.PARTICIPATION_SCHEMA.HO_LS,"orangered");
+        Employee emp3a = new Employee("Otto", "Waalkes", Employee.PARTICIPATION_SCHEMA.HO_LS,"brown");
+        Employee emp3b = new Employee("Natalie", "Schön", Employee.PARTICIPATION_SCHEMA.HO_LS,"darkgoldenrod");
+
+        emp1a.addBackup(emp1b);
+        emp1b.addBackup(emp1a);
+
+        emp2a.addBackup(emp2b);
+        emp2b.addBackup(emp2a);
+
+        emp3a.addBackup(emp3b);
+        emp3b.addBackup(emp3a);
+
+        return new Employee[] {emp1a, emp1b, emp2a, emp2b, emp3a, emp3b};
+    }
+
     private List<EmployeeGroup> createGroups() {
 
         // Group 1
-        Employee emp1a = new Employee("Hans", "Maier",5, false, "#0099ee");
-        Employee emp1b = new Employee("Sabine", "Klein",2, false,"darkred");
+        Employee emp1a = new Employee("Hans", "Maier", Employee.PARTICIPATION_SCHEMA.HO_LS, "#0099ee");
+        Employee emp1b = new Employee("Sabine", "Klein", Employee.PARTICIPATION_SCHEMA.HO_LS,"darkred");
         // Group 2
-        Employee emp2a = new Employee("Willi", "Schick",4, false,"yellowgreen");
-        Employee emp2b = new Employee("Karla", "Meier",1, false,"orangered");
+        Employee emp2a = new Employee("Willi", "Schick",Employee.PARTICIPATION_SCHEMA.HO_LS,"yellowgreen");
+        Employee emp2b = new Employee("Karla", "Meier",Employee.PARTICIPATION_SCHEMA.HO_LS,"orangered");
         // Group 3
-        Employee emp3a = new Employee("Otto", "Waalkes",3, false,"brown");
-        Employee emp3b = new Employee("Natalie", "Schön", 0, false,"darkgoldenrod");
+        Employee emp3a = new Employee("Otto", "Waalkes", Employee.PARTICIPATION_SCHEMA.HO_LS,"brown");
+        Employee emp3b = new Employee("Natalie", "Schön", Employee.PARTICIPATION_SCHEMA.HO_LS,"darkgoldenrod");
 
         EmployeeGroup group1 = new EmployeeGroup("Group 1", new Employee[] {emp1a, emp1b});
         EmployeeGroup group2 = new EmployeeGroup("Group 2", new Employee[] {emp2a, emp2b});

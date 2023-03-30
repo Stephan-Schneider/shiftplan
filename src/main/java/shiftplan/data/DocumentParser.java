@@ -193,7 +193,7 @@ public class DocumentParser {
                 boolean empLateShiftOnly = Boolean.parseBoolean(employeeNode.getChildText("lateshift-only"));
                 String empColor = employeeNode.getChildText("color");
                 String empEmail = employeeNode.getChildText("email");
-                Employee employee = new Employee(empName, empLastName, empShiftOrder, empLateShiftOnly, empColor, empEmail);
+                Employee employee = new Employee(empName, empLastName, Employee.PARTICIPATION_SCHEMA.HO_LS, empColor, empEmail);
                 logger.info("Employee {} wird Gruppe {} hinzugefügt", employee, groupName);
                 employees.add(employee);
             });

@@ -1,13 +1,23 @@
 package shiftplan.users;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import shiftplan.calendar.ShiftPolicy;
+
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.*;
 
 public class HomeOfficeRecord implements Comparable<HomeOfficeRecord> {
 
+    private static final Logger logger = LogManager.getLogger(HomeOfficeRecord.class);
+
+    private static final int maxHoDayPerMonth = ShiftPolicy.INSTANCE.getMaxHoDaysPerMonth();
+
     private final int optionsInPlan;
     private final int notAssigned;
     private final int month;
-    private final String groupName;
+    private final String employeeName;
 
     private static final List<HomeOfficeRecord> allRecords = new ArrayList<>();
 
@@ -29,8 +39,26 @@ public class HomeOfficeRecord implements Comparable<HomeOfficeRecord> {
         months.put(12, "Dezember");
     }
 
-    public HomeOfficeRecord(String groupName, int month, int optionsInPlan, int notAssigned) {
-        this.groupName = groupName;
+    public static void createHomeOfficeReport(Employee[] employees, LocalDate start, LocalDate end) {
+        LocalDate endExclusive = end.plusDays(1);
+        for (Employee employee : employees) {
+            start.datesUntil(endExclusive, Period.ofMonths(1)).forEach(localDate -> {
+                int month = localDate.getMonthValue();
+                int hoDaysTotalPerMonth = employee.getHoDaysTotalPerMonth(month);
+                logger.debug("MA {} in Monat {} zugewiesen: {}", employee.getName(), month, hoDaysTotalPerMonth);
+                HomeOfficeRecord record = new HomeOfficeRecord(
+                        employee.getName() + " " + employee.getLastName(),
+                        month,
+                        hoDaysTotalPerMonth,
+                        maxHoDayPerMonth - hoDaysTotalPerMonth
+                );
+                addRecord(record);
+            });
+        }
+    }
+
+    private HomeOfficeRecord(String employeeName, int month, int optionsInPlan, int notAssigned) {
+        this.employeeName = employeeName;
         this.month = month;
         this.optionsInPlan = optionsInPlan;
         this.notAssigned = notAssigned;
@@ -44,8 +72,8 @@ public class HomeOfficeRecord implements Comparable<HomeOfficeRecord> {
         return notAssigned;
     }
 
-    public String getGroupName() {
-        return groupName;
+    public String getEmployeeName() {
+        return employeeName;
     }
 
     public int getMonth() {
