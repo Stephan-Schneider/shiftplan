@@ -8,8 +8,8 @@ import org.jdom2.JDOMException;
 import org.jdom2.input.SAXBuilder;
 import org.jdom2.input.sax.XMLReaderJDOMFactory;
 import org.jdom2.input.sax.XMLReaderXSDFactory;
+import shiftplan.calendar.ShiftPolicy;
 import shiftplan.users.Employee;
-import shiftplan.users.EmployeeGroup;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,8 +20,9 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 
 public class DocumentParser {
 
@@ -30,12 +31,8 @@ public class DocumentParser {
     private int year;
     private LocalDate startDate;
     private LocalDate endDate;
-    private int maxHomeOfficeDaysPerWeek;
-    private int maxHomeOfficeDaysPerMonth;
-    private int homeOfficeDuration;
-    private int maxLateShiftDuration;
     private final List<LocalDate> holidays = new ArrayList<>();
-    private final List<EmployeeGroup> employeeGroupList = new ArrayList<>();
+    private Employee[] employees;
 
     private final Document doc;
 
@@ -43,7 +40,9 @@ public class DocumentParser {
         InputStream in = this.getClass().getClassLoader().getResourceAsStream("shiftplan.xml");
         if (in == null) throw new IllegalArgumentException("shiftplan.xml nicht gefunden!");
 
-        SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory());
+        // FIXME: Schema kann nicht erstellt werden - der Pfad der Schema-Datei ist jedoch korrekt
+        //SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory());
+        SAXBuilder saxBuilder = new SAXBuilder();
         doc = saxBuilder.build(in);
     }
 
@@ -53,7 +52,10 @@ public class DocumentParser {
         if (Files.isRegularFile(xmlPathObj) && Files.isReadable(xmlPathObj)
                 && Files.isRegularFile(xsdPathObj) && Files.isReadable(xsdPathObj)) {
             logger.debug("XMLDatei und XSD-Datei existieren und sind lesbar");
-            SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory(xsdPath));
+
+            // FIXME: Schema kann nicht erstellt werden - der Pfad der Schema-Datei ist jedoch korrekt
+            //SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory(xsdPath));
+            SAXBuilder saxBuilder = new SAXBuilder();
             doc = saxBuilder.build(xmlPathObj.toFile());
         } else {
             throw new IllegalArgumentException(xmlPath + " nicht gefunden");
@@ -94,28 +96,12 @@ public class DocumentParser {
         return endDate;
     }
 
-    public int getMaxHomeOfficeDaysPerWeek() {
-        return maxHomeOfficeDaysPerWeek;
-    }
-
-    public int getMaxHomeOfficeDaysPerMonth() {
-        return maxHomeOfficeDaysPerMonth;
-    }
-
-    public int getHomeOfficeDuration() {
-        return homeOfficeDuration;
-    }
-
-    public int getMaxLateShiftDuration() {
-        return maxLateShiftDuration;
-    }
-
     public List<LocalDate> getHolidays() {
         return holidays;
     }
 
-    public List<EmployeeGroup> getEmployeeGroupList() {
-        return employeeGroupList;
+    public Employee[] getEmployees() {
+        return employees;
     }
 
     public void parseDocument() {
@@ -168,40 +154,57 @@ public class DocumentParser {
         }
 
         logger.info("Dauer der Home-Office- und Spätschicht-Phasen werden ausgelesen");
-        Element shiftDuration = rootNode.getChild("shift-duration");
-        maxHomeOfficeDaysPerWeek = Integer.parseInt(shiftDuration.getChildText("max-home-per-week"));
-        maxHomeOfficeDaysPerMonth = Integer.parseInt(shiftDuration.getChildText("max-home-per-month"));
-        homeOfficeDuration = Integer.parseInt(shiftDuration.getChildText("home-office"));
-        maxLateShiftDuration = Integer.parseInt(shiftDuration.getChildText("max-late-shift"));
-        logger.info("Dauer der Homeoffice-Phase: {} / Maximale Dauer der Spätschicht-Phase: {}",
-                homeOfficeDuration, maxLateShiftDuration);
+        ShiftPolicy policy = ShiftPolicy.INSTANCE;
+        ShiftPolicy.Builder builder = new ShiftPolicy.Builder();
 
-        logger.info("Schichtgruppen werden ausgelesen ...");
-        List<Element> employeeGroups = rootNode.getChild("employee-groups").getChildren("employee-group");
-        for (Element employeeGroup : employeeGroups) {
-            EmployeeGroup empGroup;
-            List<Employee> employees = new ArrayList<>();
+        Element shiftPolicy = rootNode.getChild("shift-policy");
+        builder.setLateShiftPeriod(Integer.parseInt(shiftPolicy.getChildText("late-shift-period")));
+        shiftPolicy
+                .getChildren("no-lateshift-on")
+                .forEach(element -> builder.addNoLateShiftOn(element.getText()));
+        builder.setMaxHoDaysPerMonth(Integer.parseInt(shiftPolicy.getChildText("max-home-per-month")));
+        builder.setWeeklyHoCreditsPerEmployee(Integer.parseInt(shiftPolicy.getChildText("ho-credits-per-employee")));
+        builder.setMaxHoSlots(Integer.parseInt(shiftPolicy.getChildText("max-ho-slots-per-day")));
 
-            String groupName = employeeGroup.getChildText("group-name");
-            logger.info("Schichtgruppe {} wird geparsed", groupName);
+        policy.createShiftPolicy(builder);
 
-            employeeGroup.getChild("employees").getChildren("employee").forEach(employeeNode -> {
-                logger.info("Angestellte der Gruppe {} werden verarbeitet", groupName);
-                String empName = employeeNode.getChildText("name");
-                String empLastName = employeeNode.getChildText("lastname");
-                int empShiftOrder = Integer.parseInt(employeeNode.getChildText("lateshift-order"));
-                boolean empLateShiftOnly = Boolean.parseBoolean(employeeNode.getChildText("lateshift-only"));
-                String empColor = employeeNode.getChildText("color");
-                String empEmail = employeeNode.getChildText("email");
-                Employee employee = new Employee(empName, empLastName, Employee.PARTICIPATION_SCHEMA.HO_LS, empColor, empEmail);
-                logger.info("Employee {} wird Gruppe {} hinzugefügt", employee, groupName);
-                employees.add(employee);
-            });
-            Employee[] empArray = employees.toArray(new Employee[0]);
-            empGroup = new EmployeeGroup(groupName, empArray);
-            employeeGroupList.add(empGroup);
+        logger.info("Dauer der Spätschicht-Phase: {} / Maximale Anzahl von HO-Tagen pro Woche: {} / " +
+                        "Maximale Anzahl von MA's im Homeoffice pro Arbeitstag: {}",
+                policy.getLateShiftPeriod(), policy.getWeeklyHoCreditsPerEmployee(), policy.getMaxHoSlots());
+
+        logger.info("Liste der Angestellten wird ausgelesen ...");
+        List<Employee> employeeList = new ArrayList<>();
+        Map<Employee, List<String>> tmpBackupMap = new HashMap<>(); // Mapping zwischen MA's und deren Backups
+        rootNode.getChild("employees").getChildren("employee").forEach(employeeNode -> {
+
+            String empId = employeeNode.getAttributeValue("id");
+            String empName = employeeNode.getChildText("name");
+            String empLastName = employeeNode.getChildText("lastname");
+            Employee.PARTICIPATION_SCHEMA empPartSchema =
+                    Employee.PARTICIPATION_SCHEMA.valueOf(employeeNode.getChildText("participation"));
+            String empColor = employeeNode.getChildText("color");
+            String empEmail = employeeNode.getChildText("email");
+
+            List<String> backupIds = new ArrayList<>(); // Liste der Backup-IDs des MA's
+            Element backupNode = employeeNode.getChild("backups");
+            if (backupNode != null) { // <backups> ist ein optionales Element, daher muss auf null geprüft werden
+                backupNode.getChildren("backup").forEach(backup -> backupIds.add(backup.getAttributeValue("idref")));
+            }
+            Employee employee = new Employee(empId, empName, empLastName, empPartSchema, empColor, empEmail);
+            tmpBackupMap.put(employee, backupIds);
+            employeeList.add(employee);
+        });
+
+        for (Employee key : tmpBackupMap.keySet()) {
+            List<String> ids = tmpBackupMap.get(key);
+            List<Employee> backupsForKey = employeeList.stream().filter(employee -> ids.contains(employee.getId())).toList();
+            key.addBackups(backupsForKey);
+            logger.info("MA {} {} mit diesen Backups erstellt: {}", key.getName(), key.getLastName(), key.getBackups());
         }
-        logger.info("Alle Schichtgruppen verarbeitet ({} Gruppen)", employeeGroupList.size());
+
+        this.employees = employeeList.toArray(new Employee[0]);
+
+        logger.info("Angestelltenliste ausgelesen ({} Mitarbeiter)", this.employees.length);
     }
 
     private void parseHolidayNode(Element holidayNode) {

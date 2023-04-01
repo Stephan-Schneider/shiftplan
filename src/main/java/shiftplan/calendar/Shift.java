@@ -3,9 +3,9 @@ package shiftplan.calendar;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import shiftplan.users.Employee;
-import shiftplan.users.EmployeeGroup;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 
 public class Shift {
 
@@ -13,15 +13,10 @@ public class Shift {
 
     private final LocalDate date;
     private Employee lateShift;
-    private int homeOfficeSlots;
-    private int maxHoDaysPerMonth;
-    private Employee[] employeesInHo;
+    private final int homeOfficeSlots;
+    private final int maxHoDaysPerMonth;
+    private final Employee[] employeesInHo;
     private int index = -1;
-    private EmployeeGroup homeOfficeGroup;
-
-    public Shift(LocalDate date) {
-        this.date = date;
-    }
 
     public Shift(LocalDate date, int hoSlots, int maxHoDayPerMonth) {
         this.date = date;
@@ -97,20 +92,12 @@ public class Shift {
         this.lateShift = lateShift;
     }
 
-    public EmployeeGroup getHomeOfficeGroup() {
-        return homeOfficeGroup;
-    }
-
-    public void setHomeOfficeGroup(EmployeeGroup homeOfficeGroup) {
-        this.homeOfficeGroup = homeOfficeGroup;
-    }
-
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("Shift{");
         sb.append("date=").append(date);
         sb.append(", lateShift=").append(lateShift);
-        sb.append(", homeOfficeGroup=").append(homeOfficeGroup.getGroupName());
+        sb.append(", employeesInHo=").append(Arrays.toString(employeesInHo));
         sb.append('}');
         return sb.toString();
     }

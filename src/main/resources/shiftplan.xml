@@ -17,75 +17,64 @@
         <holiday name="2. Weihnachtstag" date="2023-12-26"/>
         <holiday name="Sylvester" date="2023-12-31"/>
     </public-holidays>
-    <shift-duration>
-        <max-home-per-week>2</max-home-per-week> <!-- Maximale Anzahl von Homeoffice-Tagen pro Woche -->
+
+    <shift-policy>
+        <late-shift-period>4</late-shift-period> <!-- Anzahl der fortlaufenden Spätschichttage -->
+        <no-lateshift-on>MONDAY</no-lateshift-on> <!-- Tage an denen keine Spätschicht vorgesehen ist (z.B. montags) -->
+        <no-lateshift-on>TUESDAY</no-lateshift-on>
         <max-home-per-month>8</max-home-per-month> <!-- Maximale Anzahl von Homeoffice-Tagen pro Monat -->
-        <home-office>2</home-office> <!-- Geplante Anzahl von Homeoffice-Tagen pro Woche -->
-        <max-late-shift>4</max-late-shift> <!-- Die tatsächliche Anzahl von Spätschichten kann in Abhängigkeit vom Homeoffice-Plan abweichen -->
-    </shift-duration>
-    <employee-groups>
-        <employee-group>
-            <group-name>Gruppe A</group-name>
-            <employees>
-                <employee>
-                    <name>Greta</name>
-                    <lastname>Thünberg</lastname>
-                    <lateshift-only>false</lateshift-only>
-                    <lateshift-order>6</lateshift-order>
-                    <color>#336699</color>
-                    <email>stephanschneider34@hotmail.com</email>
-                    <ooo>
-                        <absence start="2023-05-02" end="2023-05-05"/>
-                        <absence start="2023-06-12" end="2023-06-23"/>
-                    </ooo>
-                </employee>
-                <employee>
-                    <name>Luisa</name>
-                    <lastname>Neubauer</lastname>
-                    <lateshift-only>true</lateshift-only>
-                    <lateshift-order>3</lateshift-order>
-                    <color>#ff0000</color>
-                    <email>stephan.god.schneider@googlemail.com</email>
-                </employee>
-            </employees>
-        </employee-group>
-        <employee-group>
-            <group-name>Gruppe B</group-name>
-            <employees>
-                <employee>
-                    <name>Alexander</name>
-                    <lastname>Gauland</lastname>
-                    <lateshift-only>true</lateshift-only>
-                    <lateshift-order>5</lateshift-order>
-                    <color>brown</color>
-                </employee>
-                <employee>
-                    <name>Beatrix</name>
-                    <lastname>von Storch</lastname>
-                    <lateshift-only>false</lateshift-only>
-                    <lateshift-order>2</lateshift-order>
-                    <color>blue</color>
-                </employee>
-            </employees>
-        </employee-group>
-        <employee-group>
-            <group-name>Gruppe C</group-name>
-            <employees>
-                <employee>
-                    <name>Donald</name>
-                    <lastname>Trump</lastname>
-                    <lateshift-only>false</lateshift-only>
-                    <lateshift-order>4</lateshift-order>
-                    <color>darkgoldenrod</color>
-                </employee>
-                <employee>
-                    <name>Silvio</name>
-                    <lastname>Berlusconi</lastname>
-                    <lateshift-only>false</lateshift-only>
-                    <lateshift-order>1</lateshift-order>
-                    <color>#ff00aa</color>
-                </employee>
-            </employees>
-        </employee-group>
-    </employee-groups>
+        <ho-credits-per-employee>2</ho-credits-per-employee> <!-- Max. Anzahl von HO-Tagen pro Woche -->
+        <max-ho-slots-per-day>2</max-ho-slots-per-day> <!-- Maximale Anzahl von MA's, die an einem Tag von zu Hause arbeiten-->
+    </shift-policy>
+
+    <employees>
+        <employee id="ID-1">
+            <name>Greta</name>
+            <lastname>Thünberg</lastname>
+            <participation>HO_LS</participation>
+            <color>#336699</color>
+            <email>stephanschneider34@hotmail.com</email>
+            <backups>
+                <backup idref="ID-2"/>
+                <backup idref="ID-4"/>
+            </backups>
+        </employee>
+        <employee id="ID-2">
+            <name>Luisa</name>
+            <lastname>Neubauer</lastname>
+            <participation>HO</participation>
+            <color>#ff0000</color>
+            <email>stephan.god.schneider@googlemail.com</email>
+            <backups>
+                <backup idref="ID-1"/>
+            </backups>
+        </employee>
+        <employee id="ID-3">
+            <name>Alexander</name>
+            <lastname>Gauland</lastname>
+            <participation>LS</participation>
+            <color>brown</color>
+        </employee>
+        <employee id="ID-4">
+            <name>Beatrix</name>
+            <lastname>von Storch</lastname>
+            <participation>HO_LS</participation>
+            <color>blue</color>
+            <backups>
+                <backup idref="ID-1"/>
+            </backups>
+        </employee>
+        <employee id="ID-5">
+            <name>Donald</name>
+            <lastname>Trump</lastname>
+            <participation>HO_LS</participation>
+            <color>darkgoldenrod</color>
+        </employee>
+        <employee id="ID-6">
+            <name>Silvio</name>
+            <lastname>Berlusconi</lastname>
+            <participation>HO_LS</participation>
+            <color>#ff00aa</color>
+        </employee>
+    </employees>
 </shiftplan>

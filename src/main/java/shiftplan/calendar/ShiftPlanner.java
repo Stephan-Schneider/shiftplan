@@ -3,7 +3,6 @@ package shiftplan.calendar;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import shiftplan.users.Employee;
-import shiftplan.users.EmployeeGroup;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -68,57 +67,16 @@ public class ShiftPlanner {
         this.endDate = endDate.plusDays(1);
     }
 
-    public Map<String, Shift> createShiftPlan(List<EmployeeGroup> employeeGroups) {
-        logger.info("Schichtplan wird erstellt");
-        Map<String, Shift> shiftPlan = new TreeMap<>();
-
-        /*employeeGroups.forEach(employeeGroup -> {
-            for (LocalDate date : employeeGroup.getHomeOfficePlan()) {
-                Shift shift = shiftPlan.getOrDefault(date.toString(), new Shift(date));
-                shift.setHomeOfficeGroup(employeeGroup);
-                shiftPlan.putIfAbsent(date.toString(), shift);
-            }
-            for (Employee employee : employeeGroup.getEmployees()) {
-                employee.getLateShiftPlan().forEach(date -> {
-                    Shift shift = shiftPlan.getOrDefault(date.toString(), new Shift(date));
-                    shift.setLateShift(employee);
-                    shiftPlan.putIfAbsent(date.toString(), shift);
-                });
-            }
-        });*/
-        return shiftPlan;
-    }
-
-    public void createHomeOfficePlan(List<EmployeeGroup> employeeGroups, int homeOfficeDayCount) {
-        assert employeeGroups != null && !employeeGroups.isEmpty();
-
-        logger.info("HomeofficePlan wird erstellt");
-
-        int forwardCount = employeeGroups.size() * homeOfficeDayCount;
-        logger.debug("forwardCount = {}", forwardCount);
-        int startIndex = 0;
-        List<LocalDate> workDays = getWorkDays();
-        logger.debug("workdays.size() (number of workdays) = {}", workDays.size());
-
-        for (EmployeeGroup employeeGroup : employeeGroups) {
-            for (int index = startIndex; index < workDays.size(); index +=forwardCount) {
-                int outerBound = checkRangeInBounds(workDays.size(), index, homeOfficeDayCount);
-                logger.trace("outerBound: {}", outerBound);
-                if (outerBound > -1) {
-                    List<LocalDate> dateRange = workDays.subList(index, outerBound);
-                    employeeGroup.addToPlan(dateRange);
-                }
-            }
-            startIndex += homeOfficeDayCount;
-            logger.debug("startIndex (nach Ende der inneren (for-) Schleife: {}", startIndex);
-        }
-        logger.info("Erstellung des Homeoffice-Plans abgeschlossen");
-    }
-
     public Map<String, Shift> createLateShiftPlan(Employee[] employees) {
         assert employees != null && employees.length > 0;
 
         logger.info("Spätschichtplan wird erstellt");
+
+        // Angestellte ausfiltern, die nicht an den Spätschichten teilnehmen und ausschließlich Homeoffice machen
+        Employee[] lsCandidates = Arrays
+                .stream(employees)
+                .filter(employee -> employee.getParticipationSchema() != Employee.PARTICIPATION_SCHEMA.HO)
+                .toArray(Employee[]::new);
 
         // Der Schlüssel der <lateShifts>-Map (<String> - Typ-Parameter) besteht aus einem java.time.LocaleDate.toString().
         // Die Konvertierung zu String ist notwendig, da sonst die LocaleDate-Keys der <calendarWeeks>-Map
@@ -130,22 +88,31 @@ public class ShiftPlanner {
         int shiftPeriod = policy.getLateShiftPeriod();
         int maxHOSlots = policy.getMaxHoSlots();
         int maxHoDaysPerMonth = policy.getMaxHoDaysPerMonth();
+        List<DayOfWeek> noLateShift = policy.getNoLateShiftOn();
 
         List<LocalDate> workdays = getWorkDays();
         // Zähler für die Anzahl der zugewiesenen Spätschichten. Das Maximum ist shiftDayCounter >= shiftPeriod
         int shiftDayCounter = 0;
-        int employeeIndex = 0; // Index für den Zugriff auf die Employee's im Employee-Array
+        int employeeIndex = 0; // Index für den Zugriff auf die Employee's im lsCandidates-Array
 
         for (LocalDate workDay : workdays) {
+            if (noLateShift.contains(workDay.getDayOfWeek())) {
+                // Es ist zulässig, Wochentage festzulegen, an denen keine Spätschicht stattfinden soll
+                // (z.B. montags). In diesem Fall wird ein Shift-Objekt ohne <lateShift> - Property erstellt und
+                // der lateShifts-Map hinzugefügt.
+                Shift emptyLateShift = new Shift(workDay, maxHOSlots, maxHoDaysPerMonth);
+                lateShifts.put(workDay.toString(), emptyLateShift);
+                continue;
+            }
             Shift lateShift = new Shift(workDay, maxHOSlots, maxHoDaysPerMonth);
             if (shiftDayCounter >= shiftPeriod) {
                 shiftDayCounter = 0;
                 ++employeeIndex;
-                if (employeeIndex >= employees.length) {
+                if (employeeIndex >= lsCandidates.length) {
                     employeeIndex = 0;
                 }
             }
-            lateShift.setLateShift(employees[employeeIndex]);
+            lateShift.setLateShift(lsCandidates[employeeIndex]);
             lateShifts.put(workDay.toString(), lateShift); // Konvertierung zu String
             ++shiftDayCounter;
         }
@@ -258,7 +225,9 @@ public class ShiftPlanner {
         Set<Employee> lateShiftOfCurrentWeek = new LinkedHashSet<>();
         for (LocalDate date : cw) {
             Shift shift = shifts.get(date.toString()); // Konvertierung von <date> zu String!!
-            if (shift != null) { // Nicht allen Tage einer KW sind Schichten zugeordnet (z.B. Wochenende, Feiertag).
+            // Nicht allen Tage einer KW sind Schichten zugeordnet (z.B. Wochenende, Feiertag) und nicht jede Schicht
+            // muss zwingend mit einer Spätschicht besetzt sein (z.B. Montags keine Spätschicht)
+            if (shift != null && shift.getLateShift() != null) {
                 // Einfaches Ausfiltern von Mehrfach-Einträgen eines Employees: Set erlaubt keine Duplikate
                 lateShiftOfCurrentWeek.add(shift.getLateShift());
             }
@@ -268,61 +237,6 @@ public class ShiftPlanner {
         tmpList.forEach(employee -> logger.info("Spätschichten für KW {}: {}",
                 cwIndex, employee));
         return tmpList;
-    }
-
-    public void createLateShiftPlan(Employee[] employees, int shiftPeriod) {
-        assert employees != null && employees.length > 0;
-
-        logger.info("Spätschichtplan wird erstellt");
-
-        int shiftDayCount = 1;
-        int employeeIndex = 0;
-        int updatedEmployeeIndex = 0;
-        List<LocalDate> workDays = getWorkDays();
-
-        for (LocalDate workday : workDays) {
-            updatedEmployeeIndex = getNextEmployee(employees, workday, employeeIndex, shiftDayCount, shiftPeriod);
-            logger.debug("updatedEmployeeIndex: {}", updatedEmployeeIndex);
-            if (updatedEmployeeIndex != employeeIndex) {
-                shiftDayCount = 1;
-                employeeIndex = updatedEmployeeIndex;
-            }
-            Employee employee = employees[employeeIndex];
-            logger.debug("Current employee: {}", employee.getName());
-            //employee.addToLateShiftPlan(workday);
-            ++shiftDayCount;
-            logger.debug("shiftDayCount (nach Hinzufügen einer Schicht für {}: {}", employee.getName(), shiftDayCount);
-        }
-    }
-
-    private int getNextEmployee(Employee[] employees, LocalDate currentDate, int currentEmployeeIndex, int shiftDayCount, int shiftPeriod) {
-        logger.debug("Current date: {} // currentEmployeeIndex: {} // shiftDayCount: {}",
-                currentDate, currentEmployeeIndex, shiftDayCount);
-        Employee employee = employees[currentEmployeeIndex];
-        //if (shiftDayCount > shiftPeriod || (employee.isHomeOfficeDay(currentDate) && !employee.isLateShiftOnly())) { // > oder >= ?
-        if (shiftDayCount > shiftPeriod || employee.isHomeOfficeDay(currentDate)) {
-            // Der Wechsel zum nächsten Angestellten erfolgt, wenn der aktuelle Spätschichtinhaber die vorgeschriebene
-            // Anzahl von Spätschichten erreicht hat oder das aktuelle Datum auf einen Homeoffice-Tag dieses Angestellten
-            // fällt, unabhängig davon, ob der Angestellte am Homeoffice-Zyklus tatsächlich teilnimmt
-            // oder nicht (<max-lateshift-only>true|false</max-lateshift-only>
-            shiftDayCount = -1;
-            ++currentEmployeeIndex;
-            if (currentEmployeeIndex >= employees.length) {
-                currentEmployeeIndex = 0;
-            }
-            return getNextEmployee(employees, currentDate, currentEmployeeIndex, shiftDayCount, shiftPeriod);
-        }
-        return currentEmployeeIndex;
-    }
-
-    private int checkRangeInBounds(int workDaysSize, int currentIndex, int homeOfficeDayCount) {
-        for (int i = homeOfficeDayCount; i >= 1; --i) {
-            int outerBound = currentIndex + i;
-            if (outerBound <= workDaysSize) {
-                return outerBound;
-            }
-        }
-        return -1;
     }
 
     List<LocalDate> getWorkDays() {

@@ -3,7 +3,6 @@ package shiftplan.users;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -13,8 +12,14 @@ public class Employee implements Comparable<Employee> {
 
     private static final Logger logger = LogManager.getLogger(Employee.class);
 
+    /*
+    HO: Nur Homeoffice
+    LS: Nur Spätschicht
+    HO_LS: Homeoffice und Spätschicht
+     */
     public enum PARTICIPATION_SCHEMA {HO, LS, HO_LS}
 
+    private final String id;
     private final String name;
     private final String lastName;
     private String highlightColor;
@@ -34,27 +39,29 @@ public class Employee implements Comparable<Employee> {
     private int homeOfficeBalance;
 
     // Liste der Backups - diese Liste konstituiert eine Restriktion bei der Vergabe von HO-Tagen: Backups und dieser
-    // MA schließen sich bei der HO-Vergabe an einem bestimmten daten gegenseitig aus
+    // MA schließen sich bei der HO-Vergabe an einem bestimmten Datum gegenseitig aus
     private final List<Employee> backups = new ArrayList<>();
 
-
-    private EmployeeGroup employeeGroup;
-
-    public Employee(String aName, String aLastName, PARTICIPATION_SCHEMA schema) {
+    public Employee(String anId, String aName, String aLastName, PARTICIPATION_SCHEMA schema) {
+        id = anId;
         name = aName;
         lastName = aLastName;
         this.schema = schema;
 
     }
 
-    public Employee(String name, String lastName, PARTICIPATION_SCHEMA schema, String highlightColor) {
-        this(name, lastName, schema);
+    public Employee(String id, String name, String lastName, PARTICIPATION_SCHEMA schema, String highlightColor) {
+        this(id, name, lastName, schema);
         this.highlightColor = highlightColor;
     }
 
-    public Employee(String name, String lastName, PARTICIPATION_SCHEMA schema, String highlightColor, String email) {
-        this(name, lastName, schema, highlightColor);
+    public Employee(String id, String name, String lastName, PARTICIPATION_SCHEMA schema, String highlightColor, String email) {
+        this(id, name, lastName, schema, highlightColor);
         this.email = email;
+    }
+
+    public String getId() {
+        return id;
     }
 
     public String getName() {
@@ -83,6 +90,12 @@ public class Employee implements Comparable<Employee> {
     public void addBackup(Employee backup) {
         assert backup != null && !this.equals(backup);
         backups.add(backup);
+    }
+
+    public void addBackups(List<Employee> backups) {
+        if (backups != null && !backups.isEmpty()) {
+            backups.forEach(this::addBackup);
+        }
     }
 
     public List<Employee> getBackups() {
@@ -123,26 +136,6 @@ public class Employee implements Comparable<Employee> {
 
     public int getNotAssignedHoDays() {
         return notAssignedHoDays;
-    }
-
-    public int getLateShiftOrder() {
-        return 0;
-    }
-
-    void setEmployeeGroup(EmployeeGroup group) {
-        employeeGroup = group;
-    }
-
-    public EmployeeGroup getEmployeeGroup() {
-        return employeeGroup;
-    }
-
-    public String getEmployeeGroupName() {
-        return employeeGroup.getGroupName();
-    }
-
-    public boolean isHomeOfficeDay(LocalDate date) {
-        return employeeGroup.getHomeOfficePlan().contains(date);
     }
 
     @Override

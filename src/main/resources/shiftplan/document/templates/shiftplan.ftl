@@ -99,6 +99,11 @@
             border: 1px solid black;
         }
 
+        #shiftplan .sub-header {
+            font-weight: normal;
+            font-size: xx-small;
+        }
+
         #shiftplan > tbody tr:nth-child(odd) {
             background-color: #fff;
         }
@@ -124,6 +129,10 @@
             margin: 0 0 0 5px;
             padding-left: 0;
             list-style-type: square;
+        }
+
+        #shiftplan .small {
+            font-size: xx-small;
         }
 
         #homeoffice-control-section {
@@ -253,22 +262,22 @@
                 <th colspan="2">Donnerstag</th>
                 <th colspan="2">Freitag</th>
             </tr>
-            </thead>
-            <tbody>
             <tr>
                 <th></th>
                 <th></th>
-                <th>Home Office</th>
-                <th>Spätdienst</th>
-                <th>Home Office</th>
-                <th>Spätdienst</th>
-                <th>Home Office</th>
-                <th>Spätdienst</th>
-                <th>Home Office</th>
-                <th>Spätdienst</th>
-                <th>Home Office</th>
-                <th>Spätdienst</th>
+                <th class="sub-header">Home Office</th>
+                <th class="sub-header">Spätdienst</th>
+                <th class="sub-header">Home Office</th>
+                <th class="sub-header">Spätdienst</th>
+                <th class="sub-header">Home Office</th>
+                <th class="sub-header">Spätdienst</th>
+                <th class="sub-header">Home Office</th>
+                <th class="sub-header">Spätdienst</th>
+                <th class="sub-header">Home Office</th>
+                <th class="sub-header">Spätdienst</th>
             </tr>
+            </thead>
+            <tbody>
             <#list calendar as cwIndex, calendarWeek>
                 <tr>
                     <td>${cwIndex}</td>
@@ -285,16 +294,23 @@
                                             <#if employee??>
                                                 <li><span style="color: ${employee.highlightColor}">${employee.name}</span></li>
                                             <#else>
-                                                <strong>Nicht besetzt</strong>
+                                                <span class="small">Nicht besetzt</span><br>
                                             </#if>
-
                                         </#items>
                                     </ul>
                                     <#else>
-                                        <p><strong>Nicht besetzt</strong></p>
+                                        <p><span class="small">Nicht besetzt</span></p>
                                 </#list>
                             </td>
-                            <td style="color: ${shiftPlan[workday].lateShift.highlightColor}">${shiftPlan[workday].lateShift.name}</td>
+                            <td
+                                <#if shiftPlan[workday].lateShift??>
+                                    style="color: ${shiftPlan[workday].lateShift.highlightColor}">
+                                    ${shiftPlan[workday].lateShift.name}
+                                <#else>
+                                    >
+                                    <span class="small">Keine Spätschicht</span>
+                                </#if>
+                            </td>
                         <#else>
                             <td colspan="2">Kein Arbeitstag</td>
                         </#if>

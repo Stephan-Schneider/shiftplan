@@ -1,10 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
+    <!-- Liste der Wochentage -->
+    <xs:simpleType name="weekdays">
+        <xs:restriction base="xs:simpleType">
+            <xs:enumeration value="MONDAY"/>
+            <xs:enumeration value="TUESDAY"/>
+            <xs:enumeration value="WEDNESDAY"/>
+            <xs:enumeration value="THURSDAY"/>
+            <xs:enumeration value="FRIDAY"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <!-- Liste der Partizipations-Schemata
+            HO: nur Homeoffice
+            LS: nur Spätschicht
+            HO_LS: MA nimmt an Homeoffice UND Spätschicht teil
+    -->
+    <xs:simpleType name="participationType">
+        <xs:restriction base="xs:simpleType">
+            <xs:enumeration value="HO"/>
+            <xs:enumeration value="LS"/>
+            <xs:enumeration value="HO_LS"/>
+        </xs:restriction>
+    </xs:simpleType>
+
     <!-- Datentyp Email-Adresse -->
     <xs:simpleType name="emailAddress">
         <xs:restriction base="xs:string">
-            <xs:pattern value=".+@[^\.].*\.[a-z]{2,}"/>
+            <xs:pattern value=".+@[^.].*\.[a-z]{2,}"/>
         </xs:restriction>
     </xs:simpleType>
 
@@ -23,54 +47,41 @@
                         </xs:sequence>
                     </xs:complexType>
                 </xs:element>
-                <xs:element name="shift-duration">
+                <xs:element name="shift-policy">
                     <xs:complexType>
                         <xs:sequence>
-                            <xs:element name="max-home-per-week" type="xs:int" default="2"/>
+                            <xs:element name="late-shift-period" type="xs:int" default="5"/>
+                            <xs:element name="no-lateshift-on" type="weekdays" maxOccurs="5"/>
                             <xs:element name="max-home-per-month" type="xs:int" default="8"/>
-                            <xs:element name="home-office" type="xs:int" default="2"/>
-                            <xs:element name="max-late-shift" type="xs:int" default="5"/>
+                            <xs:element name="ho-credits-per-employee" type="xs:int" default="2"/>
+                            <xs:element name="max-ho-slots-per-day" type="xs:int" default="2"/>
                         </xs:sequence>
                     </xs:complexType>
                 </xs:element>
-                <xs:element name="employee-groups">
+                <xs:element name="employees">
                     <xs:complexType>
                         <xs:sequence>
-                            <xs:element name="employee-group" maxOccurs="unbounded">
+                            <xs:element name="employee" maxOccurs="unbounded">
                                 <xs:complexType>
                                     <xs:sequence>
-                                        <xs:element name="group-name" type="xs:string" />
-                                        <xs:element name="employees">
+                                        <xs:element name="name" type="xs:string" />
+                                        <xs:element name="lastname" type="xs:string" />
+                                        <xs:element name="participation" type="participationType"/>
+                                        <xs:element name="color" type="xs:string" minOccurs="0"/>
+                                        <xs:element name="email" type="emailAddress" minOccurs="0"/>
+                                        <xs:element name="backups" minOccurs="0">
                                             <xs:complexType>
                                                 <xs:sequence>
-                                                    <xs:element name="employee" maxOccurs="unbounded">
+                                                    <xs:element name="backup" maxOccurs="unbounded">
                                                         <xs:complexType>
-                                                            <xs:sequence>
-                                                                <xs:element name="name" type="xs:string" />
-                                                                <xs:element name="lastname" type="xs:string" />
-                                                                <xs:element name="lateshift-only" type="xs:boolean" />
-                                                                <xs:element name="lateshift-order" default="-1" type="xs:int" />
-                                                                <xs:element name="color" type="xs:string" minOccurs="0"/>
-                                                                <xs:element name="email" type="emailAddress" minOccurs="0"/>
-                                                                <xs:element name="ooo" minOccurs="0">
-                                                                    <xs:complexType>
-                                                                        <xs:sequence>
-                                                                            <xs:element name="absence" maxOccurs="unbounded">
-                                                                                <xs:complexType>
-                                                                                    <xs:attribute name="start" use="required" type="xs:date"/>
-                                                                                    <xs:attribute name="end" use="required" type="xs:date"/>
-                                                                                </xs:complexType>
-                                                                            </xs:element>
-                                                                        </xs:sequence>
-                                                                    </xs:complexType>
-                                                                </xs:element>
-                                                            </xs:sequence>
+                                                            <xs:attribute name="idref" use="required" type="xs:IDREF"/>
                                                         </xs:complexType>
                                                     </xs:element>
                                                 </xs:sequence>
                                             </xs:complexType>
                                         </xs:element>
                                     </xs:sequence>
+                                    <xs:attribute name="id" use="required" type="xs:ID"/>
                                 </xs:complexType>
                             </xs:element>
                         </xs:sequence>

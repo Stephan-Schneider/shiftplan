@@ -9,7 +9,7 @@ if [ -L "${0}" ]; then
     script_path=$(readlink "${0}")
     install_dir=$(dirname "$script_path")
 else
-    install_dir=$(dirname "$0")
+    install_dir=$(dirname "${0}")
 fi
 
 echo "Die Anwendung befindet sich im Verzeichnis: $install_dir"
@@ -82,7 +82,7 @@ if [ "$sendEmail" = true ]; then
   echo "Bitte das Passwort für den Email-Account des Absenders eingeben:"
   read -s -r smtpPassword
   # echo "$smtpPassword"
-  java --module-path shiftplan-1.0.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" -o "$outDir" -c "$configPath" -p "$smtpPassword" -s
+  java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" -o "$outDir" -c "$configPath" -p "$smtpPassword" -s
 else
-  java --module-path shiftplan-1.0.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" -o "$outDir"
+  java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" -o "$outDir"
 fi

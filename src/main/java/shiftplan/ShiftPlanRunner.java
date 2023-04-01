@@ -10,12 +10,12 @@ import org.jsoup.nodes.Document;
 import shiftplan.calendar.Shift;
 import shiftplan.calendar.ShiftCalendar;
 import shiftplan.calendar.ShiftPlanner;
+import shiftplan.calendar.ShiftPolicy;
 import shiftplan.data.DocumentParser;
 import shiftplan.document.DocGenerator;
 import shiftplan.document.TemplateProcessor;
 import shiftplan.publish.EmailDispatch;
 import shiftplan.users.Employee;
-import shiftplan.users.EmployeeGroup;
 import shiftplan.users.HomeOfficeRecord;
 
 import java.io.File;
@@ -33,47 +33,39 @@ public class ShiftPlanRunner {
     private static final Logger logger = LogManager.getLogger(ShiftPlanRunner.class);
 
     public Map<String, Object> createShiftPlan(DocumentParser docParser) {
+        int year = docParser.getYear();
         LocalDate startDate = docParser.getStartDate();
         LocalDate endDate = docParser.getEndDate();
         List<LocalDate> holidays = docParser.getHolidays();
-        List<EmployeeGroup> groups = docParser.getEmployeeGroupList();
-        int homeOfficeDuration = docParser.getHomeOfficeDuration();
-        int lateShiftDuration = docParser.getMaxLateShiftDuration();
-        int maxPerWeek = docParser.getMaxHomeOfficeDaysPerWeek();
-        int maxPerMonth = docParser.getMaxHomeOfficeDaysPerMonth();
+        Employee[] employees = docParser.getEmployees();
 
-        ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(holidays, docParser.getYear(), startDate, endDate);
+        ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(holidays, year, startDate, endDate);
 
-        shiftPlanner.createHomeOfficePlan(groups, homeOfficeDuration);
-        groups.forEach(employeeGroup -> {
-            List<HomeOfficeRecord> homeOfficeRecords = employeeGroup.calculateHomeOfficeOptionByMonth(
-                    docParser.getYear(), maxPerWeek, maxPerMonth
-            );
-            HomeOfficeRecord.addRecord(homeOfficeRecords);
-        });
+        Map<String, Shift> shiftPlan = shiftPlanner.createLateShiftPlan(employees);
 
-        Employee[] employees = EmployeeGroup.getEmployeesInShiftOrder();
-        shiftPlanner.createLateShiftPlan(employees,lateShiftDuration);
-
-        Map<String, Shift> shiftPlan = shiftPlanner.createShiftPlan(groups);
-
-        ShiftCalendar shiftCalendar = new ShiftCalendar(docParser.getYear());
+        ShiftCalendar shiftCalendar = new ShiftCalendar(year);
         Map<Integer, LocalDate[]> calendar = shiftCalendar.createCalendar(startDate, endDate);
 
-        List<Employee> allEmployees = EmployeeGroup.getAllEmployees();
+        shiftPlanner.createHomeOfficePlan(employees, shiftPlan, calendar);
 
+        HomeOfficeRecord.createHomeOfficeReport(employees, startDate, endDate);
+        List<HomeOfficeRecord> records = HomeOfficeRecord.getAllRecords();
+
+        ShiftPolicy policy = ShiftPolicy.INSTANCE;
         Map<String, Integer> shiftInfo = new HashMap<>();
-        shiftInfo.put("homeOfficeDuration", homeOfficeDuration);
-        shiftInfo.put("lateShiftDuration", lateShiftDuration);
+        shiftInfo.put("hoSlotsPerShift", policy.getMaxHoSlots());
+        shiftInfo.put("hoCreditsPerWeek", policy.getWeeklyHoCreditsPerEmployee());
+        shiftInfo.put("maxHoDaysPerMonth", policy.getMaxHoDaysPerMonth());
+        shiftInfo.put("lateShiftDuration", policy.getLateShiftPeriod());
 
         Map<String, Object> dataModel = new HashMap<>();
         dataModel.put("startDate", startDate);
         dataModel.put("endDate", endDate);
         dataModel.put("shiftInfo", shiftInfo);
-        dataModel.put("employees", allEmployees);
+        dataModel.put("employees", employees);
         dataModel.put("shiftPlan", shiftPlan);
         dataModel.put("calendar", calendar);
-        dataModel.put("homeOfficeRecords", HomeOfficeRecord.getAllRecords());
+        dataModel.put("homeOfficeRecords", records);
 
         return dataModel;
     }
@@ -282,7 +274,7 @@ public class ShiftPlanRunner {
             if (sendMail) {
                 if (password != null && !password.isBlank()) {
                     EmailDispatch emailDispatch = new EmailDispatch(configPath);
-                    emailDispatch.sendMail(EmployeeGroup.getAllEmployees(), attachment, password);
+                    emailDispatch.sendMail(List.of(parser.getEmployees()), attachment, password);
                 }
             }
         } catch (IOException | JDOMException ex) {
