@@ -89,7 +89,7 @@ public class ShiftPlanRunner {
         Path pathToPDF;
         String fileName = "Schichtplan_" + dataModel.get("startDate") + "_bis_" + dataModel.get("endDate");
         if (outDir == null || outDir.isEmpty()) {
-            pathToPDF = Files.createTempFile(fileName, "pdf");
+            pathToPDF = Files.createTempFile(fileName, ".pdf");
             pathToPDF.toFile().deleteOnExit();
         } else {
             pathToPDF = Path.of(outDir, fileName + ".pdf");
