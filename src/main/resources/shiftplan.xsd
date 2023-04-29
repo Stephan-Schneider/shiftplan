@@ -3,7 +3,7 @@
 
     <!-- Liste der Wochentage -->
     <xs:simpleType name="weekdays">
-        <xs:restriction base="xs:simpleType">
+        <xs:restriction base="xs:string">
             <xs:enumeration value="MONDAY"/>
             <xs:enumeration value="TUESDAY"/>
             <xs:enumeration value="WEDNESDAY"/>
@@ -18,7 +18,7 @@
             HO_LS: MA nimmt an Homeoffice UND Spätschicht teil
     -->
     <xs:simpleType name="participationType">
-        <xs:restriction base="xs:simpleType">
+        <xs:restriction base="xs:string">
             <xs:enumeration value="HO"/>
             <xs:enumeration value="LS"/>
             <xs:enumeration value="HO_LS"/>

@@ -40,9 +40,7 @@ public class DocumentParser {
         InputStream in = this.getClass().getClassLoader().getResourceAsStream("shiftplan.xml");
         if (in == null) throw new IllegalArgumentException("shiftplan.xml nicht gefunden!");
 
-        // FIXME: Schema kann nicht erstellt werden - der Pfad der Schema-Datei ist jedoch korrekt
-        //SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory());
-        SAXBuilder saxBuilder = new SAXBuilder();
+        SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory());
         doc = saxBuilder.build(in);
     }
 
@@ -53,9 +51,7 @@ public class DocumentParser {
                 && Files.isRegularFile(xsdPathObj) && Files.isReadable(xsdPathObj)) {
             logger.debug("XMLDatei und XSD-Datei existieren und sind lesbar");
 
-            // FIXME: Schema kann nicht erstellt werden - der Pfad der Schema-Datei ist jedoch korrekt
-            //SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory(xsdPath));
-            SAXBuilder saxBuilder = new SAXBuilder();
+            SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory(xsdPath));
             doc = saxBuilder.build(xmlPathObj.toFile());
         } else {
             throw new IllegalArgumentException(xmlPath + " nicht gefunden");
