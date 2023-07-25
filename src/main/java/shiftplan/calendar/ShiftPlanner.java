@@ -208,7 +208,7 @@ public class ShiftPlanner {
         } else if (!top.hasDaysLeft()) {
             fillHoSlot(employeeStack, tmpList, shift);
         } else if (!top.equals(lateShift) && top.hasDaysLeft()) {
-            if (shift.hasBackupConflictWith(top)) {
+            if (Shift.hasBackupConflictWith(top, shift.getEmployeesInHo())) {
                 if (!tmpList.contains(top)) tmpList.add(top);
                 fillHoSlot(employeeStack, tmpList, shift);
             } else if (shift.isMaxPerMonthOverrun(top)) {

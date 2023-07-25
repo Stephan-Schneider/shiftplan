@@ -29,7 +29,7 @@ public class Shift {
         return homeOfficeSlots;
     }
 
-    public boolean hasBackupConflictWith(Employee hoCandidate) {
+    public static boolean hasBackupConflictWith(Employee hoCandidate, Employee[] employeesInHo) {
         // Prüft, ob einem Backup des Kandidaten an diesem Tag bereits ein HO-Tag zugeteilt wurde - falls ja, kann der
         // Slot nicht an den Kandidaten vergeben werden
         assert hoCandidate != null;
@@ -73,7 +73,7 @@ public class Shift {
     }
 
     public Employee[] getEmployeesInHo() {
-        return employeesInHo;
+        return Arrays.copyOf(employeesInHo, employeesInHo.length);
     }
 
     public boolean hasSlots() {

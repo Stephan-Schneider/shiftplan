@@ -7,6 +7,7 @@ import org.jdom2.JDOMException;
 import org.jsoup.nodes.Document;
 import org.junit.jupiter.api.Test;
 import shiftplan.data.DocumentParser;
+import shiftplan.data.ShiftPlanSerializer;
 import shiftplan.document.DocGenerator;
 import shiftplan.document.TemplateProcessor;
 import shiftplan.users.Employee;
@@ -193,6 +194,19 @@ class ShiftPlannerTest {
         dataModel.put("calendar", calendar);
         dataModel.put("homeOfficeRecords", records);
 
+        ShiftPlanSerializer serializer = new ShiftPlanSerializer();
+        org.jdom2.Document doc = serializer.serializeShiftPlan(
+                year,
+                startDate,
+                endDate,
+                policy,
+                shiftPlan,
+                calendar,
+                employees
+        );
+        Path pathToXMLFile = Path.of(System.getProperty("user.home"), "shiftplan_serialized.xml");
+        serializer.writeXML(doc, pathToXMLFile);
+
         TemplateProcessor processor = TemplateProcessor.INSTANCE;
         processor.initConfiguration();
         StringWriter output = processor.processDocumentTemplate(dataModel, "shiftplan.ftl");
@@ -200,7 +214,6 @@ class ShiftPlannerTest {
         DocGenerator docGenerator = new DocGenerator();
         Document document = docGenerator.getRawHTML(output.toString());
         docGenerator.createPDF(document, Path.of(System.getProperty("user.home"), "shiftplan.pdf"));
-
     }
 
     private Employee[] getEmployees() {

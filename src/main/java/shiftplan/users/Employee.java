@@ -141,7 +141,8 @@ public class Employee implements Comparable<Employee> {
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("Employee{");
-        sb.append("name='").append(name).append('\'');
+        sb.append("ID='").append(id).append('\'');
+        sb.append(", name='").append(name).append('\'');
         sb.append(", lastName='").append(lastName).append('\'');
         sb.append(", homeOfficeBalance='").append(homeOfficeBalance).append('\'');
         sb.append(", participationSchema=").append(getParticipationSchema().name());
@@ -156,6 +157,7 @@ public class Employee implements Comparable<Employee> {
 
         Employee employee = (Employee) o;
 
+        if (!getId().equals(employee.getId())) return false;
         if (getParticipationSchema() != employee.getParticipationSchema()) return false;
         if (!getName().equals(employee.getName())) return false;
         if (!getLastName().equals(employee.getLastName())) return false;
@@ -165,6 +167,7 @@ public class Employee implements Comparable<Employee> {
     @Override
     public int hashCode() {
         int result = getName().hashCode();
+        result = 31 * result + getId().hashCode();
         result = 31 * result + getLastName().hashCode();
         result = 31 * result + getParticipationSchema().name().hashCode();
         result = 31 * result + getHighlightColor().hashCode();

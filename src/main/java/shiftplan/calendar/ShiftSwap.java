@@ -1,0 +1,371 @@
+package shiftplan.calendar;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import shiftplan.users.Employee;
+
+import java.util.*;
+import java.util.stream.IntStream;
+
+public class ShiftSwap {
+
+    private static final Logger logger = LogManager.getLogger(ShiftSwap.class);
+
+    public enum SWAP_MODE {REPLACE, SWAP}
+
+    public record SwapResult(SWAP_MODE swapMode, Employee emp1, int undistributedHoDays1, Employee emp2, int... undistributedHoDays2 ) {
+        public SwapResult {
+            Objects.requireNonNull(swapMode);
+            Objects.requireNonNull(emp1);
+            Objects.requireNonNull(emp2);
+        }
+    }
+
+    private final ShiftPolicy policy = ShiftPolicy.INSTANCE;
+
+    private final ShiftPlanCopy shiftPlanCopy;
+    private final Map<ShiftPlanCopy.CalendarWeek, ShiftPlanCopy.WorkDay[]> calendarWeeks;
+    private final Map<Integer, ShiftPlanCopy.WorkDay[]> simpleCalendarWeeks;
+    private final List<ShiftPlanCopy.CalendarWeek> sortedKeys;
+    private final int minIndex;
+    private final int maxIndex;
+
+    private final SWAP_MODE swapMode;
+    private final boolean swapHO;
+
+
+    /** Konstruktor mit den Default-Werten <code>SWAP_MODE.SWAP</code> und <code>swapHO == true</code>
+     *
+     * @param copy Kopie des Schichtplans, der auf Basis der XML-Serialisierung des Schichtplans rekonstruiert wird
+     */
+    public ShiftSwap(ShiftPlanCopy copy) {
+        this(copy, SWAP_MODE.SWAP, true);
+    }
+
+    public ShiftSwap(ShiftPlanCopy copy, SWAP_MODE swap_mode, boolean swapHo) {
+        shiftPlanCopy = copy;
+        calendarWeeks = shiftPlanCopy.getCalendarWeeks();
+
+        this.swapMode = swap_mode;
+        this.swapHO = swapHo;
+
+        simpleCalendarWeeks = new HashMap<>();
+        sortedKeys = new ArrayList<>(calendarWeeks.keySet());
+        sortedKeys.sort(Comparator.comparing(ShiftPlanCopy.CalendarWeek::cwIndex));
+        sortedKeys.forEach(calendarWeek -> simpleCalendarWeeks.put(calendarWeek.cwIndex(), calendarWeeks.get(calendarWeek)));
+
+        minIndex = sortedKeys
+                .stream()
+                .map(ShiftPlanCopy.CalendarWeek::cwIndex)
+                .mapToInt(Integer::intValue)
+                .min()
+                .orElse(-1);
+        logger.debug("Kleinster Kalenderwochen-Index: {}", minIndex);
+
+
+        maxIndex = sortedKeys
+                .stream()
+                .map(ShiftPlanCopy.CalendarWeek::cwIndex)
+                .mapToInt(Integer::intValue)
+                .max()
+                .orElse(-1);
+        logger.debug("Größter KalenderWochen-Index: {}", maxIndex);
+    }
+
+    public List<ShiftPlanCopy.CalendarWeek> getCalendarWeeks() {
+        return sortedKeys;
+    }
+
+    public Map<Integer, ShiftPlanCopy.WorkDay[]> getSimpleCalendarWeeks() {
+        return simpleCalendarWeeks;
+    }
+
+    /**
+     * Ändert den Schichtplan entweder in Form eines Spätschicht-Tauschs (SWAP_MODE.SWAP) oder indem
+     * der Mitarbeiter mit ID <code>employee2ID</code> die Spätschicht vom Mitarbeiter mit ID <code>employee1Id</code>
+     * übernimmt (SWAP_MODE.REPLACE) - ohne reziproken Tausch.
+     *
+     * Optional können auch die durch die Änderung des Spätschichtplans eventuell entfallenden HomeOffice-Tage soweit
+     * möglich verschoben werden.
+     *
+     * @param employee1Id ID des MA 1. In SWAP-Mode: replaced und replacer, in REPLACE_Mode: replaced
+     * @param cwIndex1 Index der Kalenderwoche, in welcher der Spätschicht-Zyklus von MA 1 beginnt
+     * @param employee2Id ID des MA 2. In SWAP-Mode: replaced und replacer, in REPLACE-Mode: replacer
+     * @param optionalCwIndex2 Optionaler Index der Kalenderwoche, in welcher der Spätschicht-Zyklus von MA 2 beginnt.
+     *                         Wird nur angegeben, wenn Spätschichten getauscht werden sollen (SWAP_MODE.SWAP)
+     * @return SwapResult: ein Record der das Ergebnis der SchichtplanÄnderung festhält
+     */
+    public SwapResult swap(String employee1Id, int cwIndex1, String employee2Id, int... optionalCwIndex2) {
+        assert optionalCwIndex2.length <= 1;
+        int cwIndex2 = -1;
+
+        if (swapMode == SWAP_MODE.SWAP) {
+            if (optionalCwIndex2.length == 0) {
+                throw new ShiftPlanSwapException(
+                        "Für den Spätschicht-Tausch müssen die Kalenderwochen beider Mitarbeiter angegeben werden!");
+            } else {
+                cwIndex2 = optionalCwIndex2[0];
+            }
+        }
+
+        Employee emp1 = shiftPlanCopy.getEmployeeById(employee1Id);
+        Employee emp2 = shiftPlanCopy.getEmployeeById(employee2Id);
+        if (employeeIsNull(emp1) || employeeIsNull(emp2)) {
+            throw new ShiftPlanSwapException("Ungültige Mitarbeiter-ID's!");
+        }
+
+        if (swapMode == SWAP_MODE.SWAP) {
+            if (indexOutOfRange(cwIndex1) || indexOutOfRange(cwIndex2)) {
+                throw new ShiftPlanSwapException("Ungültige Kalenderwoche(n)!");
+            }
+            if (!isLateshift(emp1, cwIndex1) || !isLateshift(emp2, cwIndex2)) {
+                throw new ShiftPlanSwapException("Keine Spätschicht des MA's in der angegebenen Spätschicht");
+            }
+        } else {
+            if (indexOutOfRange(cwIndex1)) {
+                throw new ShiftPlanSwapException("Ungültige Kalenderwoche!");
+            }
+            if (!isLateshift(emp1, cwIndex1)) {
+                throw new ShiftPlanSwapException(("Ungültige Kalenderwoche"));
+            }
+        }
+
+        if (swapMode == SWAP_MODE.REPLACE) {
+            int undistributedHoDays = 0;
+            int cancelledHoDays = replaceLateShift(emp1, emp2, cwIndex1);
+            if (swapHO) {
+                undistributedHoDays = swapHomeOfficeDays(emp1, emp2, cwIndex1, cancelledHoDays);
+            }
+            return new SwapResult(swapMode, emp1, undistributedHoDays, emp2);
+        } else if (swapMode == SWAP_MODE.SWAP) {
+            int undistributedHoDaysEmp1 = 0;
+            int undistributedHODaysEmp2 = 0;
+            Map<String, Integer> cancelledHoDays = swapLateShift(emp1, cwIndex1, emp2, cwIndex2);
+            if (swapHO) {
+                undistributedHoDaysEmp1 = swapHomeOfficeDays(emp1, emp2, cwIndex1, cancelledHoDays.get(employee1Id));
+                undistributedHODaysEmp2 = swapHomeOfficeDays(emp2, emp1, cwIndex2, cancelledHoDays.get(employee2Id));
+            }
+            return new SwapResult(swapMode, emp1, undistributedHoDaysEmp1, emp2, undistributedHODaysEmp2);
+        }
+        return null;
+    }
+
+    int replaceLateShift(Employee replaced, Employee replacer, int cwIndex) {
+        ShiftPlanCopy.WorkDay[] lateShifts = simpleCalendarWeeks.get(cwIndex);
+
+        int lateShiftIndex = getIndexOfFirstLateShift(lateShifts, replaced);
+        if (lateShiftIndex < 0) {
+            throw new ShiftPlanSwapException(
+                    "MA " + replaced.getName() + " hat keine Spätschicht in KW " + cwIndex + "!");
+        }
+        int lateShiftPeriod = policy.getLateShiftPeriod();
+        int[] cancelledHoDays = new int[1];
+        moveLateShift(lateShifts, cwIndex, lateShiftIndex, replaced, replacer, lateShiftPeriod, cancelledHoDays);
+        return cancelledHoDays[0];
+    }
+
+     Map<String, Integer> swapLateShift(Employee employee1, int cwIndex1, Employee employee2, int cwIndex2) {
+        ShiftPlanCopy.WorkDay[] emp1LateShifts = simpleCalendarWeeks.get(cwIndex1);
+        ShiftPlanCopy.WorkDay[] emp2LateShifts = simpleCalendarWeeks.get(cwIndex2);
+
+        int lateShiftIndexOfEmp1 = getIndexOfFirstLateShift(emp1LateShifts, employee1);
+        if (lateShiftIndexOfEmp1 < 0) {
+            throw new ShiftPlanSwapException("MA " + employee1.getName() +
+                    " hat Keine Spätschicht in KW " + cwIndex1 + "!");
+        }
+        int lateShiftIndexOfEmp2 = getIndexOfFirstLateShift(emp2LateShifts, employee2);
+        if (lateShiftIndexOfEmp2 < 0) {
+            throw new ShiftPlanSwapException("MA " + employee2.getName() +
+                    " hat Keine Spätschicht in KW " + cwIndex2 + "!");
+        }
+
+        int lateShiftPeriod = policy.getLateShiftPeriod();
+
+        int[] cancelledHoEmp1 = new int[1];
+        int[] cancelledHoEmp2 = new int[1];
+
+        moveLateShift(emp1LateShifts, cwIndex1, lateShiftIndexOfEmp1, employee1, employee2, lateShiftPeriod, cancelledHoEmp1);
+        moveLateShift(emp2LateShifts, cwIndex2, lateShiftIndexOfEmp2, employee2, employee1, lateShiftPeriod, cancelledHoEmp2);
+
+        Map<String, Integer> cancelledHoDays = new HashMap<>();
+        cancelledHoDays.put(employee1.getId(), cancelledHoEmp1[0]);
+        cancelledHoDays.put(employee2.getId(), cancelledHoEmp2[0]);
+        return cancelledHoDays;
+    }
+
+    /**
+     * Austausch der Spätschichten zweier Mitarbeiter:
+     *      Ausgangssituation:
+     *      - Spätschicht von A in KW X
+     *      - Spätschicht von B in KW Y
+     *
+     *     Nach Tausch
+     *     - Spätschicht A in KW Y
+     *     - Spätschicht B in KW X
+     *
+     * Der Austausch beginnt in den Kalenderwochen X bzw. Y. Je nach den jeweiligen Gegebenheiten (wochentag, auf den
+     * der Beginn des Spätschichtzyklus fällt, Anzahl der Arbeitstage in der jeweiligen Kalenderwoche, Länge des
+     * Spätschichtzyklus) kann sich ein Spätschichtzyklus über weitere Kalenderwochen erstrecken (X + 1..., Y +1...)
+     *
+     * Die Methode wird nach Bearbeitung einer Kalenderwoche erneut rekursiv aufgerufen, bis alle Spätschichten des
+     * Zyklus komplett neu zugewiesen wurden. Die Methode hält dabei die Anzahl der stornierten HomeOffice-Tage fest
+     *
+     *
+     * @param week Kalenderwoche, in welcher der Spätschicht-Tausch beginnt.
+     * @param cwIndex Index der Kalenderwoche, in welcher der Spätschichttausch beginnt.
+     * @param startIndex Index des ersten Tages in <code>week</code>, auf welchen die erste Spätschicht des
+     *                   Spätschicht-Zyklus von <code>replaced</code> fällt. Dieser Index wird hochgezählt, bis alle
+     *                   Tage von <code>week</code> durchlaufen sind.
+     * @param replaced Mitarbeiter, der / die die Spätschicht an <code>replacer</code> abgibt
+     * @param replacer Mitarbeiter, dem / der die Spätschicht zugewiesen wird und damit <code>replaced</code> ersetzt
+     * @param remainingShifts Anzahl der verbleibenden Spätschicht-Tage (bei jeder Zuteilung einer Spätschicht an
+     *                        <code>replacer</code> wird die Anzahl um 1 reduziert)
+     * @param cancelledHoDays Anzahl der stornierten HO-Tage von <code>replacer</code> - durch das Zuweisen von
+     *                        Spätschichten, können HO-Tag von <code>replacer</code>  entfallen
+     */
+    void moveLateShift(
+            ShiftPlanCopy.WorkDay[] week,
+            int cwIndex,
+            int startIndex,
+            Employee replaced,
+            Employee replacer,
+            int remainingShifts,
+            int[] cancelledHoDays
+    ) {
+        logger.info("Spätschichten von Kalenderwoche {} werden getauscht", cwIndex);
+        logger.info("KW vor Tausch: {}", (Object) week);
+
+        while (startIndex < week.length && remainingShifts > 0) {
+            week[startIndex].setLateshift(replacer);
+            cancelledHoDays[0] += week[startIndex].removeEmployeeInHo(replacer);
+            ++startIndex;
+            --remainingShifts;
+        }
+
+        logger.info("KW wird nach Änderung der Spätschicht mit Index {} im Kalender abgelegt", cwIndex);
+        simpleCalendarWeeks.put(cwIndex, week);
+        logger.info("KW nach Tausch: {}", (Object) week);
+        if (remainingShifts > 0) {
+            logger.info("Es sind noch nicht alle Schichten verteilt. <moveLateShift> wird erneut aufgerufen");
+            ShiftPlanCopy.WorkDay[] nextWeek = getAdjacentCalendarWeek(cwIndex);
+            if (nextWeek.length > 0) {
+                int startIndexOfNextWeek = getIndexOfFirstLateShift(nextWeek, replaced);
+                logger.trace("Nächste Spätschicht von replaced am weekArray-Index {}", startIndexOfNextWeek);
+                if (startIndexOfNextWeek >= 0) {
+                    moveLateShift(nextWeek, cwIndex +1, startIndexOfNextWeek, replaced, replacer,
+                            remainingShifts, cancelledHoDays);
+                }
+            }
+        }
+    }
+
+    /**
+     * Beim Tauschen der Spätschichten verlieren die involvierten Angestellten u.U. (einen Teil) ihre HO-Tage, da
+     * die Spätschicht ja auf eine Woche verlegt wird, in welcher der MA nach dem ursprünglichen Plan Normalschicht
+     * hatte und daher für das Arbeiten im HO-Office eingeteilt war. Um die verlorenen HO-Tage zu kompensieren, werden
+     * diese nach Möglichkeit in die Woche gelegt, in welcher der MA nach dem ursprünglichen Plan Spätschicht, aber
+     * nach dem Spätschicht-Tausch, Normalschicht hat.
+     *
+     * @param hoCandidate Employee, dem oder der HO-Tage zugewiesen werden.
+     * @param newLateshift Employee, der nach dem Wechsel der Spätschicht in <code>cwIndex</code> für die Spätschicht
+     *                     eingeteilt ist. Anhand der Spätschicht prüft die Anwendung, ob nach dem Anfangsindex weitere,
+     *                     nachfolgende Kalenderwochen zu berücksichtigen sind.
+     *
+     * @param cwIndex Index der Kalenderwoche, ab welcher die Verteilung der HomeOffice-Tage für <code>hoCandidate</code>
+     *                beginnt. Je nachdem, wie viele Arbeitstage die Kalenderwoche hat und auf welchen Wochentag der
+     *                Beginn dew Spätschichtzyklus fällt, kann sich der Spätschicht-Tausch auf eine, zwei oder sogar
+     *                noch mehr Kalenderwochen erstrecken.
+     * @param cancelledHoDays Anzahl der HO-Tage, die der <code>hoCandidate</code> beim Spätschicht-Tausch verloren hat.
+     * @return Anzahl der verlorenen HO-Tage, die nicht neu eingeteilt werden konnten
+     */
+    int swapHomeOfficeDays(Employee hoCandidate, Employee newLateshift, int cwIndex, int cancelledHoDays) {
+        if (hoCandidate.getParticipationSchema() == Employee.PARTICIPATION_SCHEMA.LS) return 0;
+        // Ein Wert < 0 signalisiert, daß in der aktuell untersuchten KW kein Spätschichttausch stattgefunden hat und
+        // die Schleife / Methode abgebrochen werden kann.
+        while (getIndexOfFirstLateShift(simpleCalendarWeeks.get(cwIndex), newLateshift) >= 0) {
+            logger.info("HomeOffice-Tage in Kalenderwoche {} werden (sofern möglich) verteilt", cwIndex);
+            ShiftPlanCopy.WorkDay[] week = simpleCalendarWeeks.get(cwIndex);
+            int dayIndex = 0;
+            // Anzahl der potenziell zu verteilenden HO-Tage. Dieser Wert hängt von der maximal erlaubten Anzahl von
+            // HO-Tagen in einer Woche je Mitarbeiter und der Anzahl der noch vorhandenen, beim Spätschicht-Tausch nicht
+            // stornierten HO-Tage ab (Bsp.: der MA hat an einem Montag HomeOffice, der Spätschicht-Zyklus beginnt an
+            // einem Dienstag, der Montag bleibt also als HomeOffice-Tag erhalten)
+            int remainingWeeklyHoCredits = openHoCreditsInWeek(week, hoCandidate);
+            logger.info("{} HomeOffice-Tage können in KW {} maximal zugewiesen werden", remainingWeeklyHoCredits, cwIndex);
+            while (dayIndex < week.length && cancelledHoDays > 0) {
+                if (remainingWeeklyHoCredits == 0) {
+                    logger.info("Alle HomeOffice-Optionen in KW {} erschöpft. Wechsel zur nächsten KW ...", cwIndex);
+                    // Keine HO-Tage mehr in der laufenden Woche zu verteilen, Kalenderwochen-Index erhöhen, um mit der
+                    // nächsten Kalenderwoche fortzufahren
+                    ++cwIndex;
+                    break;
+                }
+                ShiftPlanCopy.WorkDay workday = week[dayIndex];
+                if (workday.hasHoDay(hoCandidate)) {
+                    // Übriggebliebener, beim Spätschichttausch nicht stornierter HO-Tag. Es kann mit dem nächsten
+                    // Tag der Woche fortgefahren werden
+                    ++dayIndex;
+                    continue;
+                }
+                if (workday.getFreeSlots() > 0 && !workday.hasBackupConflictWith(hoCandidate)) {
+                    logger.info("HomeOffice-Einteilung am {} ({})", workday.getDate(), workday.getDayOfWeek());
+                    workday.addEmployeeInHo(hoCandidate);
+                    --remainingWeeklyHoCredits;
+                    --cancelledHoDays;
+                }
+                ++dayIndex;
+            }
+            if (cancelledHoDays == 0) {
+                return 0;
+            }
+            ++cwIndex;
+        }
+        return cancelledHoDays;
+    }
+
+    boolean indexOutOfRange(int index) {
+        return index < minIndex || index > maxIndex;
+    }
+
+    boolean employeeIsNull(Employee employee) {
+        return employee == null;
+    }
+
+    boolean isLateshift(Employee employee, int cwIndex) {
+        if (employee.getParticipationSchema() == Employee.PARTICIPATION_SCHEMA.HO) return false;
+
+        ShiftPlanCopy.WorkDay[] workDays = simpleCalendarWeeks.get(cwIndex);
+        ShiftPlanCopy.WorkDay workDayWithMatchingLateShift = Arrays
+                .stream(workDays)
+                .filter(workDay -> employee.equals(workDay.getLateshift()))
+                .findFirst()
+                .orElse(null);
+        return workDayWithMatchingLateShift != null;
+    }
+
+    int getIndexOfFirstLateShift(ShiftPlanCopy.WorkDay[] workDays, Employee employee) {
+        return IntStream.range(0, workDays.length)
+                .filter(index -> employee.equals(workDays[index].getLateshift()))
+                .findFirst()
+                .orElse(-1);
+    }
+
+    int openHoCreditsInWeek(ShiftPlanCopy.WorkDay[] week, Employee employee) {
+        // Die Methode zählt zunächst die Anzahl der HomeOffice-Tage, die dem employee in der Kalenderwoche week
+        // zugeteilt sind.
+        // Anschließend ergibt sich die Anzahl der noch möglichen weiteren HomeOffice-Tage in der gegebenen Woche aus der
+        // Differenz zwischen den maximal erlaubten HO-Tagen pro Woche und der Anzahl der bereits zugeteilten HO-Tage.
+        int maxHoCreditsPerWeek = policy.getWeeklyHoCreditsPerEmployee();
+        int hoDaysCounter = 0;
+        for (ShiftPlanCopy.WorkDay workDay : week) {
+            if (workDay.hasHoDay(employee)) {
+                ++hoDaysCounter;
+            }
+        }
+        return maxHoCreditsPerWeek - hoDaysCounter;
+    }
+
+    ShiftPlanCopy.WorkDay[] getAdjacentCalendarWeek(int cwIndex) {
+        return simpleCalendarWeeks.getOrDefault(cwIndex +1, new ShiftPlanCopy.WorkDay[0]);
+    }
+}
