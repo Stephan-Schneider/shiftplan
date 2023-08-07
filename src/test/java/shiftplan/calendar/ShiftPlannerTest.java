@@ -7,6 +7,7 @@ import org.jdom2.JDOMException;
 import org.jsoup.nodes.Document;
 import org.junit.jupiter.api.Test;
 import shiftplan.data.DocumentParser;
+import shiftplan.data.ShiftPlanDescriptor;
 import shiftplan.data.ShiftPlanSerializer;
 import shiftplan.document.DocGenerator;
 import shiftplan.document.TemplateProcessor;
@@ -29,12 +30,12 @@ class ShiftPlannerTest {
     @Test
     void getWorkDaysForCompleteCurrentYear() throws IOException, JDOMException {
         // shiftplan.xml: start-date und end-date nicht vorhanden
-        DocumentParser documentParser = new DocumentParser();
-        documentParser.parseDocument();
+        ShiftPlanDescriptor descriptor = new ShiftPlanDescriptor();
+        descriptor.parseDocument();
 
-        LocalDate startDate = documentParser.getStartDate();
-        LocalDate endDate = documentParser.getEndDate();
-        List<LocalDate> holidays = documentParser.getHolidays();
+        LocalDate startDate = descriptor.getStartDate();
+        LocalDate endDate = descriptor.getEndDate();
+        List<LocalDate> holidays = descriptor.getHolidays();
 
         ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(holidays, 2023, startDate, endDate);
         List<LocalDate> workdays = shiftPlanner.getWorkDays();
@@ -49,12 +50,12 @@ class ShiftPlannerTest {
     @Test
     void getWorkDaysFromStartDateToEndOfYear() throws IOException, JDOMException {
         // shiftplan.xml: start-date = 2023-04-01, end-date: Element nicht vorhanden
-        DocumentParser docParser = new DocumentParser();
-        docParser.parseDocument();
+        ShiftPlanDescriptor descriptor = new ShiftPlanDescriptor();
+        descriptor.parseDocument();
 
-        LocalDate startDate = docParser.getStartDate();
-        LocalDate endDate = docParser.getEndDate();
-        List<LocalDate> holidays = docParser.getHolidays();
+        LocalDate startDate = descriptor.getStartDate();
+        LocalDate endDate = descriptor.getEndDate();
+        List<LocalDate> holidays = descriptor.getHolidays();
 
         ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(holidays, 2023, startDate,endDate);
         List<LocalDate> workdays = shiftPlanner.getWorkDays();
@@ -69,12 +70,12 @@ class ShiftPlannerTest {
     @Test
     void getWorkDaysFromStartToEnd() throws IOException, JDOMException {
         // shiftplan.xml: start-date = 2023-04-01, end-date: 2023-09-01
-        DocumentParser docParser = new DocumentParser();
-        docParser.parseDocument();
+        ShiftPlanDescriptor descriptor = new ShiftPlanDescriptor();
+        descriptor.parseDocument();
 
-        LocalDate startDate = docParser.getStartDate();
-        LocalDate endDate = docParser.getEndDate();
-        List<LocalDate> holidays = docParser.getHolidays();
+        LocalDate startDate = descriptor.getStartDate();
+        LocalDate endDate = descriptor.getEndDate();
+        List<LocalDate> holidays = descriptor.getHolidays();
 
         ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(holidays, 2023, startDate, endDate);
         List<LocalDate> workdays = shiftPlanner.getWorkDays();
@@ -148,14 +149,14 @@ class ShiftPlannerTest {
 
     @Test
     void createCalendar2() throws TemplateException, IOException, JDOMException {
-        DocumentParser docParser = new DocumentParser();
-        docParser.parseDocument();
+        ShiftPlanDescriptor descriptor = new ShiftPlanDescriptor();
+        descriptor.parseDocument();
 
-        int year = docParser.getYear();
-        LocalDate startDate = docParser.getStartDate();
-        LocalDate endDate = docParser.getEndDate();
-        List<LocalDate> holidays = docParser.getHolidays();
-        Employee[] employees = docParser.getEmployees();
+        int year = descriptor.getYear();
+        LocalDate startDate = descriptor.getStartDate();
+        LocalDate endDate = descriptor.getEndDate();
+        List<LocalDate> holidays = descriptor.getHolidays();
+        Employee[] employees = descriptor.getEmployees();
 
         ShiftPolicy policy = ShiftPolicy.INSTANCE;
 
@@ -194,18 +195,18 @@ class ShiftPlannerTest {
         dataModel.put("calendar", calendar);
         dataModel.put("homeOfficeRecords", records);
 
-        ShiftPlanSerializer serializer = new ShiftPlanSerializer();
+        Path pathToXMLFile = Path.of(System.getProperty("user.home"), "shiftplan_serialized.xml");
+        ShiftPlanSerializer serializer = new ShiftPlanSerializer(pathToXMLFile);
         org.jdom2.Document doc = serializer.serializeShiftPlan(
                 year,
                 startDate,
                 endDate,
-                policy,
                 shiftPlan,
                 calendar,
                 employees
         );
-        Path pathToXMLFile = Path.of(System.getProperty("user.home"), "shiftplan_serialized.xml");
-        serializer.writeXML(doc, pathToXMLFile);
+
+        serializer.writeXML(doc);
 
         TemplateProcessor processor = TemplateProcessor.INSTANCE;
         processor.initConfiguration();

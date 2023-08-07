@@ -11,13 +11,50 @@ public class ShiftSwap {
 
     private static final Logger logger = LogManager.getLogger(ShiftSwap.class);
 
-    public enum SWAP_MODE {REPLACE, SWAP}
+    public static class SwapResult {
 
-    public record SwapResult(SWAP_MODE swapMode, Employee emp1, int undistributedHoDays1, Employee emp2, int... undistributedHoDays2 ) {
-        public SwapResult {
-            Objects.requireNonNull(swapMode);
-            Objects.requireNonNull(emp1);
-            Objects.requireNonNull(emp2);
+        private final OP_MODE swapMode;
+        private final boolean swapHO;
+        private final Employee employeeA;
+        private final int undistributedHoA;
+        private final Employee employeeB;
+        private int undistributedHoB;
+
+        public SwapResult(OP_MODE swapMode, boolean swapHo,
+                          Employee employeeA, int undistributedHoA,
+                          Employee employeeB, int... undistributedHoBOptional) {
+            this.swapMode = Objects.requireNonNull(swapMode);
+            this.swapHO = swapHo;
+            this.employeeA = Objects.requireNonNull(employeeA);
+            this.undistributedHoA = undistributedHoA;
+            this.employeeB = Objects.requireNonNull(employeeB);
+            if (undistributedHoBOptional.length >= 1) {
+                this.undistributedHoB = undistributedHoBOptional[0];
+            }
+        }
+
+        public OP_MODE getSwapMode() {
+            return swapMode;
+        }
+
+        public boolean isSwapHO() {
+            return swapHO;
+        }
+
+        public Employee getEmployeeA() {
+            return employeeA;
+        }
+
+        public int getUndistributedHoA() {
+            return undistributedHoA;
+        }
+
+        public Employee getEmployeeB() {
+            return employeeB;
+        }
+
+        public int getUndistributedHoB() {
+            return undistributedHoB;
         }
     }
 
@@ -30,7 +67,7 @@ public class ShiftSwap {
     private final int minIndex;
     private final int maxIndex;
 
-    private final SWAP_MODE swapMode;
+    private final OP_MODE swapMode;
     private final boolean swapHO;
 
 
@@ -39,13 +76,19 @@ public class ShiftSwap {
      * @param copy Kopie des Schichtplans, der auf Basis der XML-Serialisierung des Schichtplans rekonstruiert wird
      */
     public ShiftSwap(ShiftPlanCopy copy) {
-        this(copy, SWAP_MODE.SWAP, true);
+        this(copy, OP_MODE.SWAP, true);
     }
 
-    public ShiftSwap(ShiftPlanCopy copy, SWAP_MODE swap_mode, boolean swapHo) {
+    public ShiftSwap(ShiftPlanCopy copy, OP_MODE swap_mode, boolean swapHo) {
         shiftPlanCopy = copy;
         calendarWeeks = shiftPlanCopy.getCalendarWeeks();
 
+        if (swap_mode != OP_MODE.SWAP && swap_mode != OP_MODE.REPLACE) {
+            throw new ShiftPlanSwapException(
+                    "Kein gültiger Modus! Es kann nicht festgestellt werden, " +
+                            "ob Spätschichten getauscht oder eine Spätschicht ersetzt werden soll"
+            );
+        }
         this.swapMode = swap_mode;
         this.swapHO = swapHo;
 
@@ -99,7 +142,7 @@ public class ShiftSwap {
         assert optionalCwIndex2.length <= 1;
         int cwIndex2 = -1;
 
-        if (swapMode == SWAP_MODE.SWAP) {
+        if (swapMode == OP_MODE.SWAP) {
             if (optionalCwIndex2.length == 0) {
                 throw new ShiftPlanSwapException(
                         "Für den Spätschicht-Tausch müssen die Kalenderwochen beider Mitarbeiter angegeben werden!");
@@ -114,7 +157,7 @@ public class ShiftSwap {
             throw new ShiftPlanSwapException("Ungültige Mitarbeiter-ID's!");
         }
 
-        if (swapMode == SWAP_MODE.SWAP) {
+        if (swapMode == OP_MODE.SWAP) {
             if (indexOutOfRange(cwIndex1) || indexOutOfRange(cwIndex2)) {
                 throw new ShiftPlanSwapException("Ungültige Kalenderwoche(n)!");
             }
@@ -130,14 +173,14 @@ public class ShiftSwap {
             }
         }
 
-        if (swapMode == SWAP_MODE.REPLACE) {
+        if (swapMode == OP_MODE.REPLACE) {
             int undistributedHoDays = 0;
             int cancelledHoDays = replaceLateShift(emp1, emp2, cwIndex1);
             if (swapHO) {
                 undistributedHoDays = swapHomeOfficeDays(emp1, emp2, cwIndex1, cancelledHoDays);
             }
-            return new SwapResult(swapMode, emp1, undistributedHoDays, emp2);
-        } else if (swapMode == SWAP_MODE.SWAP) {
+            return new SwapResult(swapMode, false, emp1, undistributedHoDays, emp2);
+        } else if (swapMode == OP_MODE.SWAP) {
             int undistributedHoDaysEmp1 = 0;
             int undistributedHODaysEmp2 = 0;
             Map<String, Integer> cancelledHoDays = swapLateShift(emp1, cwIndex1, emp2, cwIndex2);
@@ -145,7 +188,7 @@ public class ShiftSwap {
                 undistributedHoDaysEmp1 = swapHomeOfficeDays(emp1, emp2, cwIndex1, cancelledHoDays.get(employee1Id));
                 undistributedHODaysEmp2 = swapHomeOfficeDays(emp2, emp1, cwIndex2, cancelledHoDays.get(employee2Id));
             }
-            return new SwapResult(swapMode, emp1, undistributedHoDaysEmp1, emp2, undistributedHODaysEmp2);
+            return new SwapResult(swapMode, swapHO, emp1, undistributedHoDaysEmp1, emp2, undistributedHODaysEmp2);
         }
         return null;
     }

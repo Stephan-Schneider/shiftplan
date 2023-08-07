@@ -2,6 +2,7 @@ package shiftplan.calendar;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import shiftplan.ShiftPlanRunnerException;
 import shiftplan.users.Employee;
 
 import java.time.DayOfWeek;
@@ -22,10 +23,10 @@ public class ShiftPlanner {
 
     public static ShiftPlanner newInstance(
             List<LocalDate> holidayList, int year, LocalDate startDate, LocalDate endDate)
-            throws IllegalArgumentException {
+            throws ShiftPlanRunnerException {
         assert holidayList != null;
         if (year < LocalDate.now().getYear()) {
-            throw new IllegalArgumentException(
+            throw new ShiftPlanRunnerException(
                     "Ungültiges Jahr: " + year +
                             ". Schichtpläne können nur für das aktuelle oder kommende Jahre erstellt werden");
         }
@@ -86,8 +87,9 @@ public class ShiftPlanner {
 
         ShiftPolicy policy = ShiftPolicy.INSTANCE;
         int shiftPeriod = policy.getLateShiftPeriod();
-        int maxHOSlots = policy.getMaxHoSlots();
-        int maxHoDaysPerMonth = policy.getMaxHoDaysPerMonth();
+        //TODO: maxHOSlots und maxHoDaysPerMonth - Variablen löschen
+        //int maxHOSlots = policy.getMaxHoSlots();
+        //int maxHoDaysPerMonth = policy.getMaxHoDaysPerMonth();
         List<DayOfWeek> noLateShift = policy.getNoLateShiftOn();
 
         List<LocalDate> workdays = getWorkDays();
@@ -100,11 +102,11 @@ public class ShiftPlanner {
                 // Es ist zulässig, Wochentage festzulegen, an denen keine Spätschicht stattfinden soll
                 // (z.B. montags). In diesem Fall wird ein Shift-Objekt ohne <lateShift> - Property erstellt und
                 // der lateShifts-Map hinzugefügt.
-                Shift emptyLateShift = new Shift(workDay, maxHOSlots, maxHoDaysPerMonth);
+                Shift emptyLateShift = new Shift(workDay);
                 lateShifts.put(workDay.toString(), emptyLateShift);
                 continue;
             }
-            Shift lateShift = new Shift(workDay, maxHOSlots, maxHoDaysPerMonth);
+            Shift lateShift = new Shift(workDay);
             if (shiftDayCounter >= shiftPeriod) {
                 shiftDayCounter = 0;
                 ++employeeIndex;

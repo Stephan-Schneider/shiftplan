@@ -14,7 +14,6 @@ import shiftplan.users.Employee;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -31,14 +30,14 @@ class ShiftSwapTest {
     @BeforeAll
     static void setUp() throws IOException, JDOMException {
         String home = System.getProperty("user.home");
-        String xmlPath = Path.of(home, "Projekte", "Web", "shiftplan_serialized.xml").toString();
+        Path xmlPath = Path.of(home, "Projekte", "Web", "shiftplan_serialized.xml");
         logger.debug("xmlPath: {}", xmlPath);
 
-        String xsdPath = Path.of(home, "Projekte", "Web", "shiftplan_serialized.xsd").toString();
+        Path xsdPath = Path.of(home, "Projekte", "Web", "shiftplan_serialized.xsd");
         logger.debug("xsdPath: {}", xsdPath);
 
-        ShiftPlanSerializer serializer = new ShiftPlanSerializer();
-        copy = serializer.deserializeShiftplan(xmlPath, xsdPath);
+        ShiftPlanSerializer serializer = new ShiftPlanSerializer(xmlPath, xsdPath);
+        copy = serializer.deserializeShiftplan();
     }
 
     @BeforeEach

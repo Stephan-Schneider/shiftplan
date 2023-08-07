@@ -43,6 +43,10 @@ public class ShiftPlanCopy {
         return to;
     }
 
+    public Employee[] getEmployees() {
+        return employees;
+    }
+
     public Employee getEmployeeById(String id) {
         return employeeMap.get(id);
     }

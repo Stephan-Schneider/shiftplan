@@ -8,6 +8,7 @@ import org.jdom2.output.XMLOutputter;
 import shiftplan.calendar.Shift;
 import shiftplan.calendar.ShiftPlanCopy;
 import shiftplan.calendar.ShiftPolicy;
+import shiftplan.calendar.ShiftSwapDataModelConverter;
 import shiftplan.users.Employee;
 
 import java.io.BufferedWriter;
@@ -30,11 +31,66 @@ public class ShiftPlanSerializer {
 
     private static final Logger logger = LogManager.getLogger(ShiftPlanSerializer.class);
 
+    private Path xmlFile;
+    private Path xsdFile;
+
+    /**
+     * ShiftPlanSerializer in Write-Only - Modus.
+     *
+     * Der Target - OutputStream wird als Parameter bei aufruf von
+     * <code>serializer.writeXML(Document doc, OutputStream out)</code> angegeben
+     */
     public ShiftPlanSerializer() {}
 
-    public Document serializeShiftPlan(int year, LocalDate startDate, LocalDate endDate, ShiftPolicy policy,
-                                       Map<String, Shift> shiftPlan, Map<Integer, LocalDate[]> calendar,
-                                       Employee[] employeesArray) {
+
+    /**
+     * ShiftPlanSerializer in Write-Only - Modus
+     *
+     * @param xmlFile Pfad zur XML-Datei, in die die Objekt-Repräsentation des Schichtplans geschrieben wird
+     */
+    public ShiftPlanSerializer(Path xmlFile) {
+        if (!Files.exists(xmlFile) || !Files.isRegularFile(xmlFile) || !Files.isReadable(xmlFile)) {
+            throw new IllegalArgumentException("Ungültige oder nicht existierende Xml-Datei!");
+        }
+        this.xmlFile = xmlFile;
+    }
+
+    /**ShiftPlanSerializer in Read-/Write - Modus
+     *
+     * @param xmlFile Pfad zur XML-Datei, in die die Objekt-Repräsentation des Schichtplans geschrieben wird
+     * @param xsdDir Pfad zum Verzeichnis, in welchem sich die XML-Schema - Datei 'shiftplan_serialized.xsd' befindet,
+     *               die zur Validierung der XML - Datendatei (shiftplan_serialized.xml) verwendet wird.
+     */
+    public ShiftPlanSerializer(Path xmlFile, Path xsdDir) {
+        if (!Files.exists(xmlFile) || !Files.isRegularFile(xmlFile) || !Files.isReadable(xmlFile)) {
+            throw new IllegalArgumentException("Ungültige oder nicht existierende Xml-Datei!");
+        }
+
+        Path xsdFile = xsdDir.resolve("shiftplan_serialized.xsd");
+
+        if (!Files.exists(xsdFile) || !Files.isRegularFile(xsdFile) || !Files.isReadable(xsdFile)) {
+            throw new IllegalArgumentException("Ungültiger Pfad zur XML-Schema - Datei");
+        }
+
+        this.xmlFile = xmlFile;
+        this.xsdFile = xsdFile;
+    }
+
+    public Document serializeShiftPlan(ShiftSwapDataModelConverter converter) {
+        return serializeShiftPlan(
+                converter.getYear(),
+                converter.getStartDate(),
+                converter.getEndDate(),
+                converter.getShiftPlan(),
+                converter.getCalendar(),
+                converter.getEmployees()
+        );
+    }
+
+    public Document serializeShiftPlan(int year, LocalDate startDate, LocalDate endDate, Map<String, Shift> shiftPlan,
+                                       Map<Integer, LocalDate[]> calendar, Employee[] employeesArray) {
+
+        ShiftPolicy policy = ShiftPolicy.INSTANCE;
         List<DayOfWeek> noLateShiftOnWeekdays = policy.getNoLateShiftOn();
 
         Document doc = new Document();
@@ -176,8 +232,8 @@ public class ShiftPlanSerializer {
         return doc;
     }
 
-    public ShiftPlanCopy deserializeShiftplan(String xmlPath, String xsdPath) throws IOException, JDOMException {
-        DocumentParser documentParser = new DocumentParser(xmlPath, xsdPath);
+    public ShiftPlanCopy deserializeShiftplan() throws IOException, JDOMException {
+        DocumentParser documentParser = new DocumentParser(xmlFile, xsdFile);
         Document doc = documentParser.getXMLDocument();
 
         Element root = doc.getRootElement();
@@ -190,7 +246,7 @@ public class ShiftPlanSerializer {
         try {
             Attribute startDateAttr = Objects.requireNonNull(root.getAttribute("start"),
                     "Startdatum für Schichtplan fehlt!");
-            startDate = documentParser.parseShiftPlanStartDate(startDateAttr);
+            startDate = documentParser.parseShiftPlanDate(startDateAttr);
         } catch (NullPointerException exception) {
             throw new InvalidShiftPlanException(exception.getMessage());
         }
@@ -201,7 +257,7 @@ public class ShiftPlanSerializer {
             Attribute endDateAttr = Objects.requireNonNull(root.getAttribute("end"),
                     "Enddatum für Schichtplan fehlt!");
             // XML-Datentyp: gYearMonth (xxxx-xx)
-           endDate = documentParser.parseShiftPlnEndDate(endDateAttr);
+           endDate = documentParser.parseShiftPlanDate(endDateAttr);
         } catch (NullPointerException exception) {
             throw new InvalidShiftPlanException(exception.getMessage());
         }
@@ -264,9 +320,9 @@ public class ShiftPlanSerializer {
         xmlOutputter.output(doc, out);
     }
 
-    public void writeXML(Document doc, Path pathToXmlFile) throws IOException {
+    public void writeXML(Document doc) throws IOException {
         try (BufferedWriter bufferedWriter = Files.newBufferedWriter(
-                pathToXmlFile, StandardCharsets.UTF_8,
+                xmlFile, StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING,
                 StandardOpenOption.WRITE)

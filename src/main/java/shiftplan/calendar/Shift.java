@@ -18,12 +18,22 @@ public class Shift {
     private final Employee[] employeesInHo;
     private int index = -1;
 
-    public Shift(LocalDate date, int hoSlots, int maxHoDayPerMonth) {
+    public Shift(LocalDate date) {
+        this.date = date;
+
+        ShiftPolicy policy = ShiftPolicy.INSTANCE;
+        employeesInHo = new Employee[policy.getMaxHoSlots()];
+        homeOfficeSlots = policy.getMaxHoSlots();
+        maxHoDaysPerMonth = policy.getMaxHoDaysPerMonth();
+    }
+
+    //TODO: 3-Argument Shift - Konstruktor löschen
+    /*public Shift(LocalDate date, int hoSlots, int maxHoDayPerMonth) {
         this.date = date;
         employeesInHo = new Employee[hoSlots];
         homeOfficeSlots = hoSlots;
         this.maxHoDaysPerMonth = maxHoDayPerMonth;
-    }
+    }*/
 
     public int getHomeOfficeSlots() {
         return homeOfficeSlots;

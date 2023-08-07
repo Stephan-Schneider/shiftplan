@@ -1,0 +1,13 @@
+{
+  "mode_comment1": "CREATE = Erstellung eines neuen Plans, REPLACE: Ein Spätschicht-MA (employeeA) wird durch einen anderen MA (employeeB) ersetzt, SWAP: Spätschichttausch zwischen employeeA und employeeB",
+  "mode_comment2": "Bei CREATE-Mode werden die restlichen Parameter nur zum Teil benötigt",
+  "mode": "SWAP",
+  "shiftplanCopyXMLFile": "/home/stephan/Projekte/Web/shiftplan_serialized.xml",
+  "shiftPlanCopySchemaDir": "/home/stephan/Projekte/Web",
+  "employee_comment1": "Bei einem Schichttausch (SWAP) müssen beide MA's in einem 2-Element-Array mit den KW-Indices angegeben werden, in denen die aktuellen Spätschichten der MA's (vor Tausch) liegen",
+  "employee_comment2": "Bei Spätschicht-Ersetzung (REPLACE) muss der ersetzte MA (employeeA) mit KW-Index in einem 2-Element-Array, der ersetzende MA (employeeB) nur die ID in einem 1-Element-Array oder als Einzelwert angegeben werden",
+  "employeeA": ["ID-4", "14"],
+  "employeeB": ["ID-1", "16"],
+  "swapHomeOffice_comment": "Indikator, ob durch den Spätschicht-Tausch wegfallende HomeOffice-Tage (nach Möglichkeit) ersetzt werden sollen. Wird bei REPLACE ignoriert",
+  "swapHomeOffice": true
+}

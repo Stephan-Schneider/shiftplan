@@ -15,9 +15,19 @@ import static org.junit.jupiter.api.Assertions.*;
 class DocumentParserTest {
 
     @Test
+    void testStartEndDate() throws IOException, JDOMException {
+        ShiftPlanDescriptor descriptor = new ShiftPlanDescriptor();
+        descriptor.parseDocument();
+        assertAll(
+                () -> assertEquals(LocalDate.of(2023,4,1), descriptor.getStartDate()),
+                () -> assertEquals(LocalDate.of(2023,6,30), descriptor.getEndDate())
+        );
+    }
+
+    @Test
     void checkParsedPolicy() throws IOException, JDOMException {
-        DocumentParser documentParser = new DocumentParser();
-        documentParser.parseDocument();
+        ShiftPlanDescriptor descriptor = new ShiftPlanDescriptor();
+        descriptor.parseDocument();
         ShiftPolicy policy = ShiftPolicy.INSTANCE;
 
         assertAll(
@@ -30,9 +40,9 @@ class DocumentParserTest {
 
     @Test
     void checkParsedHolidays() throws IOException, JDOMException {
-        DocumentParser documentParser = new DocumentParser();
-        documentParser.parseDocument();
-        List<LocalDate> holidays = documentParser.getHolidays();
+        ShiftPlanDescriptor descriptor = new ShiftPlanDescriptor();
+        descriptor.parseDocument();
+        List<LocalDate> holidays = descriptor.getHolidays();
         assertAll(
                 () -> assertTrue(holidays.size() > 0),
                 () -> assertTrue(holidays.contains(LocalDate.of(2023, 5, 29)))
@@ -46,10 +56,10 @@ class DocumentParserTest {
                 Employee.PARTICIPATION_SCHEMA.LS,
                 Employee.PARTICIPATION_SCHEMA.HO_LS
         );
-        DocumentParser documentParser = new DocumentParser();
-        documentParser.parseDocument();
-        assertEquals(6, documentParser.getEmployees().length);
-        Employee[] employees = documentParser.getEmployees();
+        ShiftPlanDescriptor descriptor = new ShiftPlanDescriptor();
+        descriptor.parseDocument();
+        assertEquals(6, descriptor.getEmployees().length);
+        Employee[] employees = descriptor.getEmployees();
         for (Employee employee : employees) {
             assertAll(
                     () -> assertTrue(employee.getId().startsWith("ID")),
@@ -60,7 +70,7 @@ class DocumentParserTest {
 
     @Test
     void buildDocWithXSDValidation() throws IOException, JDOMException {
-        DocumentParser documentParser = new DocumentParser();
-        documentParser.parseDocument();
+        ShiftPlanDescriptor descriptor = new ShiftPlanDescriptor();
+        descriptor.parseDocument();
     }
 }

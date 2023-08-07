@@ -139,14 +139,14 @@
             margin-top: 100px;
         }
 
-        #homeoffice-control caption {
+        .homeoffice-control-caption {
             page-break-before: always;
             margin-bottom: 5px;
             border-bottom: 1px solid silver;
             font-style: italic;
         }
 
-        #homeoffice-control {
+        #homeoffice-control,#undistributedHo {
             width: 50%;
             margin: 15px auto 0 auto;
             border: 1px solid black;
@@ -184,6 +184,35 @@
         }
 
         #homeoffice-control > tbody td {
+            padding: 5px;
+            font-size: 0.8em;
+            border: 1px solid black;
+        }
+
+        #undistributedHo thead {
+            display: table-header-group;
+        }
+
+        #undistributedHo tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+
+        #undistributedHo thead th {
+            padding: 5px;
+            font-size: 0.8em;
+            font-weight: normal;
+            border: 1px solid black;
+        }
+
+        /*#undistributedHo > tbody th {
+            padding: 5px;
+            font-size: 0.9em;
+            font-weight: normal;
+            border: 1px solid black;
+        }*/
+
+        #undistributedHo > tbody td {
             padding: 5px;
             font-size: 0.8em;
             border: 1px solid black;
@@ -321,8 +350,9 @@
         </table>
     </section>
     <section id="homeoffice-control-section">
+        <#if homeOfficeRecords??>
         <table id="homeoffice-control">
-            <caption>
+            <caption class="homeoffice-control-caption">
                 <h4>Evaluierung der Homeoffice-Zuteilungen vom ${startDate.format("dd.MM.yyyy")} bis ${endDate.format("dd.MM.yyyy")}</h4>
             </caption>
             <thead>
@@ -356,6 +386,29 @@
                 </#list>
             </tbody>
         </table>
+        <#elseif swapResult?? && swapResult.swapMode.name() == "SWAP" && swapResult.swapHO>
+        <table id="undistributedHo">
+            <caption class="homeoffice-control-caption">
+                <h4>Durch Schichtwechsel bedingte Reduzierung der Homeoffice-Tage (${swapResult.swapMode.name()})</h4>
+            </caption>
+            <thead>
+                <tr>
+                    <th>Mitarbeiter/in 1</th>
+                    <th>HO-Tage reduziert</th>
+                    <th>Mitarbeiter/in 2</th>
+                    <th>HO-Tage reduziert</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>${swapResult.employeeA.name}</td>
+                    <td>${swapResult.undistributedHoA}</td>
+                    <td>${swapResult.employeeB.name}</td>
+                    <td>${swapResult.undistributedHoB}</td>
+                </tr>
+            </tbody>
+        </table>
+        </#if>
     </section>
 </main>
 </body>

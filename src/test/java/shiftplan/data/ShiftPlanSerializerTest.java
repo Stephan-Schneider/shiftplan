@@ -29,14 +29,14 @@ class ShiftPlanSerializerTest {
     @BeforeAll
     static void setUp() throws IOException, JDOMException {
         String home = System.getProperty("user.home");
-        String xmlPath = Path.of(home, "Projekte", "Web", "shiftplan_serialized.xml").toString();
+        Path xmlPath = Path.of(home, "Projekte", "Web", "shiftplan_serialized.xml");
         logger.debug("xmlPath: {}", xmlPath);
 
-        String xsdPath = Path.of(home, "Projekte", "Web", "shiftplan_serialized.xsd").toString();
+        Path xsdPath = Path.of(home, "Projekte", "Web", "shiftplan_serialized.xsd");
         logger.debug("xsdPath: {}", xsdPath);
 
-        ShiftPlanSerializer serializer = new ShiftPlanSerializer();
-        copy = serializer.deserializeShiftplan(xmlPath, xsdPath);
+        ShiftPlanSerializer serializer = new ShiftPlanSerializer(xmlPath, xsdPath);
+        copy = serializer.deserializeShiftplan();
     }
 
     @Test
@@ -56,7 +56,6 @@ class ShiftPlanSerializerTest {
                 2023,
                 LocalDate.of(2023,1,1),
                 LocalDate.of(2023,12,31),
-                policy,
                 null,
                 null,
                 null);

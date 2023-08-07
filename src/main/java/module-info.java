@@ -7,6 +7,8 @@ module shiftplan {
     requires org.jdom2;
     requires commons.cli;
     requires commons.email;
+    requires com.fasterxml.jackson.databind;
     exports shiftplan.users to freemarker;
     exports shiftplan.calendar to freemarker;
+    opens shiftplan.calendar to com.fasterxml.jackson.databind;
 }

@@ -9,6 +9,7 @@ import org.jdom2.JDOMException;
 import org.jdom2.input.SAXBuilder;
 import org.jdom2.input.sax.XMLReaderJDOMFactory;
 import org.jdom2.input.sax.XMLReaderXSDFactory;
+import shiftplan.ShiftPlanRunnerException;
 import shiftplan.calendar.ShiftPolicy;
 import shiftplan.users.Employee;
 
@@ -19,41 +20,36 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.*;
 
 public class DocumentParser {
 
     private static final Logger logger = LogManager.getLogger(DocumentParser.class);
 
-    private int year;
-    private LocalDate startDate;
-    private LocalDate endDate;
-    private final List<LocalDate> holidays = new ArrayList<>();
-    private Employee[] employees;
-
     private final Document doc;
 
-    public DocumentParser() throws IOException, JDOMException, IllegalArgumentException {
+    public DocumentParser() throws IOException, JDOMException, ShiftPlanRunnerException {
         InputStream in = this.getClass().getClassLoader().getResourceAsStream("shiftplan.xml");
-        if (in == null) throw new IllegalArgumentException("shiftplan.xml nicht gefunden!");
+        if (in == null) throw new ShiftPlanRunnerException("shiftplan.xml nicht gefunden!");
 
         SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory());
         doc = saxBuilder.build(in);
     }
 
     public DocumentParser(String xmlPath, String xsdPath) throws IOException, JDOMException, IllegalArgumentException {
-        Path xmlPathObj = Path.of(xmlPath);
-        Path xsdPathObj = Path.of(xsdPath);
-        if (Files.isRegularFile(xmlPathObj) && Files.isReadable(xmlPathObj)
-                && Files.isRegularFile(xsdPathObj) && Files.isReadable(xsdPathObj)) {
+        this(Path.of(xmlPath), Path.of(xsdPath));
+    }
+
+    public DocumentParser(Path xmlPath, Path xsdPath) throws IOException, JDOMException, ShiftPlanRunnerException {
+        if (Files.isRegularFile(xmlPath) && Files.isReadable(xmlPath)
+                && Files.isRegularFile(xsdPath) && Files.isReadable(xsdPath)) {
             logger.debug("XMLDatei und XSD-Datei existieren und sind lesbar");
 
-            SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory(xsdPath));
+            SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory(String.valueOf(xsdPath)));
             //SAXBuilder saxBuilder = new SAXBuilder();
-            doc = saxBuilder.build(xmlPathObj.toFile());
+            doc = saxBuilder.build(xmlPath.toFile());
         } else {
-            throw new IllegalArgumentException(xmlPath + " nicht gefunden");
+            throw new ShiftPlanRunnerException(xmlPath + " nicht gefunden");
         }
     }
 
@@ -83,119 +79,27 @@ public class DocumentParser {
         return doc;
     }
 
-    public int getYear() {
-        return year;
-    }
-
-    public LocalDate getStartDate() {
-        return startDate;
-    }
-
-    public LocalDate getEndDate() {
-        return endDate;
-    }
-
-    public List<LocalDate> getHolidays() {
-        return holidays;
-    }
-
-    public Employee[] getEmployees() {
-        return employees;
-    }
-
-    public void parseDocument() throws InvalidShiftPlanException {
-        logger.info("Datenquelle 'shiftplan.xml' wird gelesen");
-        Element rootNode = doc.getRootElement();
-
-        // XML-Datentyp: gYear
-        year = Integer.parseInt(rootNode.getAttributeValue("for"));
-        logger.info("Gültigkeit des Plans für das Jahr {}", year);
-
-        logger.info("Start-Monat in {} wird ermittelt", year);
-        Attribute startDateAttr = rootNode.getAttribute("start-date");
-        if (startDateAttr != null) {
-           startDate = parseShiftPlanStartDate(startDateAttr);
-           if (startDate.getYear() != year) {
-               // Das Startdatum des Schichtplans muss in dem Jahr liegen, das im for-Attribute angegeben ist
-               throw new InvalidShiftPlanException("Ungültiges Startdatum. Grund: Ungültige Jahresangabe°!");
-           }
-        }
-
-        logger.info("Enddatum in {} wird ermittelt", year);
+    public LocalDate parseShiftPlanDate(Attribute dateAttr) {
+        assert dateAttr != null;
         // XML-Datentyp: gYearMonth (xxxx-xx)
-        Attribute endDateAttr = rootNode.getAttribute("end-date");
-        if (endDateAttr != null) {
-            endDate = parseShiftPlnEndDate(endDateAttr);
-            if (endDate.getYear() != year) {
-                // Das Enddatum des Schichtplans muss in dem Jahr liegen, das im for-Attribute angegeben ist
-                throw new InvalidShiftPlanException("Ungültiges Enddatum. Grund: Ungültige Jahresangabe°!");
-            }
-        }
+        String dateValue = dateAttr.getValue();
 
-        Element publicHolidays = rootNode.getChild("public-holidays");
-        if (publicHolidays != null) {
-            publicHolidays.getChildren("holiday").forEach(this::parseHolidayNode);
-            logger.debug("holidays: {}", holidays);
-            logger.info("{} eingetragene öffentliche Feiertage geparst", holidays.size());
+        String[] yearMonth = dateValue.split("-");
+        int yearPart = Integer.parseInt(yearMonth[0]);
+        int monthPart = Integer.parseInt(yearMonth[1]);
+
+        String attrName = dateAttr.getName();
+        LocalDate date;
+        if ("end-date".equals(attrName) || "end".equals(attrName)) {
+            // Willkürlicher Tag um LocalDate-Objekt des durch <end-date> angegebenen Monat/Jahr zu erhalten
+            LocalDate temp = LocalDate.of(yearPart, monthPart, 1);
+            date = LocalDate.of(temp.getYear(), temp.getMonthValue(), temp.lengthOfMonth());
         } else {
-            logger.info("Keine Feiertage hinterlegt - der Schichtplan wird ohne Berücksichtigung von Feiertagen erstellt");
+            date =  LocalDate.of(yearPart, monthPart, 1);
         }
 
-        logger.info("Auslesen der Spätschicht- und Homeoffice-Richtlinien ...");
-        Element shiftPolicy = rootNode.getChild("shift-policy");
-        parsePolicy(shiftPolicy);
-
-        logger.info("Liste der Angestellten wird ausgelesen ...");
-        this.employees = this.parseEmployeesNode(rootNode.getChild("employees"));
-        logger.info("Angestelltenliste ausgelesen ({} Mitarbeiter)", this.employees.length);
-    }
-
-    private void parseHolidayNode(Element holidayNode) {
-        String date = holidayNode.getAttributeValue("date");
-
-        try {
-            LocalDate holiday = LocalDate.parse(date);
-            if (!(holiday.getYear() == this.year)) {
-                throw new IllegalArgumentException("Nur Feiertage im Jahr " + this.year + " zulässig!");
-            }
-            holidays.add(holiday);
-        } catch (DateTimeParseException ex) {
-            logger.error("Malformed date " + date, ex);
-            throw ex;
-        }
-    }
-
-    public LocalDate parseShiftPlanStartDate(Attribute startDateAttr) {
-        assert startDateAttr != null;
-        // XML-Datentyp: gYearMonth (xxxx-xx)
-        String startDateValue = startDateAttr.getValue();
-
-        String[] yearMonth = startDateValue.split("-");
-        int yearPart = Integer.parseInt(yearMonth[0]);
-        int monthPart = Integer.parseInt(yearMonth[1]);
-        LocalDate startDate = LocalDate.of(yearPart, monthPart, 1);
-
-        logger.info("Start-Datum: {}", startDate);
-        return startDate;
-    }
-
-    public LocalDate parseShiftPlnEndDate(Attribute endDateAttr) {
-        assert endDateAttr != null;
-        // XML-Datentyp: gYearMonth (xxxx-xx)
-        String endDateValue = endDateAttr.getValue();
-
-        String[] yearMonth = endDateValue.split("-");
-        int yearPart = Integer.parseInt(yearMonth[0]);
-        int monthPart = Integer.parseInt(yearMonth[1]);
-
-        // Willkürlicher Tag um LocalDate-Objekt des durch <end-date> angegebenen Monat/Jahr zu erhalten
-        LocalDate temp = LocalDate.of(yearPart, monthPart, 1);
-        LocalDate endDate = LocalDate.of(temp.getYear(), temp.getMonthValue(), temp.lengthOfMonth());
-
-
-        // Entweder das notierte Enddatum des Schichtplans oder das Default-Datum 31.12.20xx
-        logger.info("End-Datum: {}", endDate);
-        return endDate;
+        logger.info("Start-/End-Datum: {}", date);
+        return date;
     }
 
     public void parsePolicy(Element policyNode) {

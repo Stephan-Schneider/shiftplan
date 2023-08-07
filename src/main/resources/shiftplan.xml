@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <shiftplan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
- xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2023" start-date="2023-03" end-date="2023-04">
+ xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2023" start-date="2023-04" end-date="2023-06">
 
     <public-holidays>
         <holiday name="Neujahr" date="2023-01-01"/>
@@ -21,7 +21,7 @@
     <shift-policy>
         <late-shift-period>4</late-shift-period> <!-- Anzahl der fortlaufenden Spätschichttage -->
         <no-lateshift-on>MONDAY</no-lateshift-on> <!-- Tage an denen keine Spätschicht vorgesehen ist (z.B. montags) -->
-        <no-lateshift-on>TUESDAY</no-lateshift-on>
+        <!--<no-lateshift-on>TUESDAY</no-lateshift-on>-->
         <max-home-per-month>8</max-home-per-month> <!-- Maximale Anzahl von Homeoffice-Tagen pro Monat -->
         <ho-credits-per-employee>2</ho-credits-per-employee> <!-- Max. Anzahl von HO-Tagen pro Woche -->
         <max-ho-slots-per-day>2</max-ho-slots-per-day> <!-- Maximale Anzahl von MA's, die an einem Tag von zu Hause arbeiten-->

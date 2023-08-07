@@ -7,18 +7,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jdom2.JDOMException;
 import org.jsoup.nodes.Document;
-import shiftplan.calendar.Shift;
-import shiftplan.calendar.ShiftCalendar;
-import shiftplan.calendar.ShiftPlanner;
-import shiftplan.calendar.ShiftPolicy;
-import shiftplan.data.DocumentParser;
+import shiftplan.calendar.*;
+import shiftplan.data.InvalidShiftPlanException;
+import shiftplan.data.ShiftPlanDescriptor;
+import shiftplan.data.ShiftPlanSerializer;
 import shiftplan.document.DocGenerator;
 import shiftplan.document.TemplateProcessor;
 import shiftplan.publish.EmailDispatch;
 import shiftplan.users.Employee;
 import shiftplan.users.HomeOfficeRecord;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.file.Files;
@@ -32,12 +30,16 @@ public class ShiftPlanRunner {
 
     private static final Logger logger = LogManager.getLogger(ShiftPlanRunner.class);
 
-    public Map<String, Object> createShiftPlan(DocumentParser docParser) {
-        int year = docParser.getYear();
-        LocalDate startDate = docParser.getStartDate();
-        LocalDate endDate = docParser.getEndDate();
-        List<LocalDate> holidays = docParser.getHolidays();
-        Employee[] employees = docParser.getEmployees();
+    public Map<String, Object> createShiftPlan(String xmlPath, SwapParams swapParams) {
+        assert swapParams.getMode() == OP_MODE.CREATE;
+
+        ShiftPlanDescriptor descriptor = getShiftPlanDescriptor(xmlPath);
+
+        int year = descriptor.getYear();
+        LocalDate startDate = descriptor.getStartDate();
+        LocalDate endDate = descriptor.getEndDate();
+        List<LocalDate> holidays = descriptor.getHolidays();
+        Employee[] employees = descriptor.getEmployees();
 
         ShiftPlanner shiftPlanner = ShiftPlanner.newInstance(holidays, year, startDate, endDate);
 
@@ -51,26 +53,103 @@ public class ShiftPlanRunner {
         HomeOfficeRecord.createHomeOfficeReport(employees, startDate, endDate);
         List<HomeOfficeRecord> records = HomeOfficeRecord.getAllRecords();
 
-        ShiftPolicy policy = ShiftPolicy.INSTANCE;
-        Map<String, Integer> shiftInfo = new HashMap<>();
-        shiftInfo.put("hoSlotsPerShift", policy.getMaxHoSlots());
-        shiftInfo.put("hoCreditsPerWeek", policy.getWeeklyHoCreditsPerEmployee());
-        shiftInfo.put("maxHoDaysPerMonth", policy.getMaxHoDaysPerMonth());
-        shiftInfo.put("lateShiftDuration", policy.getLateShiftPeriod());
+        ShiftPlanSerializer serializer = new ShiftPlanSerializer(swapParams.getShiftplanCopyXMLFile());
+        org.jdom2.Document doc = serializer.serializeShiftPlan(
+                year,
+                startDate,
+                endDate,
+                shiftPlan,
+                calendar,
+                employees
+        );
 
-        Map<String, Object> dataModel = new HashMap<>();
-        dataModel.put("startDate", startDate);
-        dataModel.put("endDate", endDate);
-        dataModel.put("shiftInfo", shiftInfo);
-        dataModel.put("employees", employees);
-        dataModel.put("shiftPlan", shiftPlan);
-        dataModel.put("calendar", calendar);
+        try {
+            serializer.writeXML(doc);
+        } catch (IOException ex) {
+            logger.error("Ausnahme beim Schreiben der shiftplan - XML-Datei", ex);
+            throw new ShiftPlanRunnerException(ex.getMessage());
+        }
+
+        Map<String, Object> dataModel = createDataModel(startDate, endDate, employees, shiftPlan, calendar);
         dataModel.put("homeOfficeRecords", records);
 
         return dataModel;
     }
 
-    private Path createPDF(String templateDir, Map<String, Object> dataModel, String outDir)
+    public Map<String, Object> modifyShiftPlan(SwapParams swapParams) {
+        OP_MODE mode = swapParams.getMode();
+        Path XMLFile = swapParams.getShiftplanCopyXMLFile();
+        Path XSDDir = swapParams.getShiftPlanCopySchemaDir();
+
+        try {
+            String[] employeeSet1 = swapParams.getEmployeeSet1();
+            String[] employeeSet2 = swapParams.getEmployeeSet2();
+            boolean swapHo = swapParams.isSwapHo();
+
+            ShiftPlanSerializer serializer = new ShiftPlanSerializer(XMLFile, XSDDir);
+            ShiftPlanCopy copy = serializer.deserializeShiftplan();
+
+            ShiftSwap swapper = new ShiftSwap(copy, mode, swapHo);
+            ShiftSwap.SwapResult swapResult;
+            if (mode == OP_MODE.REPLACE) {
+                swapResult = swapper.swap(
+                        employeeSet1[0],
+                        Integer.parseInt(employeeSet1[1]),
+                        employeeSet2[0]
+                );
+            } else {
+                swapResult = swapper.swap(
+                        employeeSet1[0],
+                        Integer.parseInt(employeeSet1[1]),
+                        employeeSet2[0],
+                        Integer.parseInt(employeeSet2[1])
+                );
+            }
+            ShiftSwapDataModelConverter converter = new ShiftSwapDataModelConverter(copy, swapper);
+
+            org.jdom2.Document document = serializer.serializeShiftPlan(converter);
+            serializer.writeXML(document);
+
+            Map<String, Object> dataModel = createDataModel(converter);
+            dataModel.put("swapResult", swapResult);
+            return dataModel;
+        } catch (NullPointerException | IllegalArgumentException | IOException | JDOMException ex) {
+            throw new ShiftPlanSwapException(ex.getMessage());
+        } catch (IndexOutOfBoundsException ex) {
+            String error = "Die employeeA-Daten müssen immer die ID sowie den KW-Index enthalten. Die employeeB-Daten " +
+                    "müssen im Operation-Modus SWAP die ID und den KW-Index, im REPLACE-Modus die ID enthalten";
+            throw new ShiftPlanSwapException(error);
+        }
+    }
+
+    Map<String, Object> createDataModel(ShiftSwapDataModelConverter converter) {
+        return createDataModel(
+                converter.getStartDate(),
+                converter.getEndDate(),
+                converter.getEmployees(),
+                converter.getShiftPlan(),
+                converter.getCalendar());
+    }
+
+    Map<String, Object> createDataModel(
+            LocalDate from,
+            LocalDate to,
+            Employee[] employees,
+            Map<String, Shift> shiftPlan,
+            Map<Integer, LocalDate[]> calendar
+    ) {
+        Map<String, Object> dataModel = new HashMap<>();
+        dataModel.put("startDate", from);
+        dataModel.put("endDate", to);
+        dataModel.put("shiftInfo", ShiftSwapDataModelConverter.getShiftInfo());
+        dataModel.put("employees", employees);
+        dataModel.put("shiftPlan", shiftPlan);
+        dataModel.put("calendar", calendar);
+        return dataModel;
+
+    }
+
+    Path createPDF(String templateDir, Map<String, Object> dataModel, String outDir)
             throws IOException, TemplateException {
         TemplateProcessor processor = TemplateProcessor.INSTANCE;
         if (templateDir == null || templateDir.isEmpty()) {
@@ -102,23 +181,33 @@ public class ShiftPlanRunner {
         return pathToPDF;
     }
 
-    private DocumentParser getDocumentParser(String xmlPath) throws IOException, JDOMException {
-        DocumentParser documentParser;
+    private ShiftPlanDescriptor getShiftPlanDescriptor(String xmlPath) {
+        ShiftPlanDescriptor descriptor;
         if (xmlPath == null || xmlPath.isEmpty()) {
             // Die Instanziierung läuft unter cer Voraussetzung fehlerfrei, dass sich die xml- und xsd-Datei
             // nicht in einem JAR-Archiv befinden
-            documentParser = new DocumentParser();
+            descriptor = new ShiftPlanDescriptor();
         } else {
             // Wenn die Anwendung in ein JAR-Archiv gepackt ist, kann das im Archiv befindliche Exemplar der
             // shiftplan-xml nicht editiert werden - die Datei muss also in einem außerhalb des Archivs
             // befindlichen Ordner abgelegt werden. Das XML-Schema muss sich im gleichen Ordner befinden.
-            String pathToXMLFile = xmlPath + File.separator + "shiftplan.xml";
-            String pathToXSDFile = xmlPath + File.separator + "shiftplan.xsd";
-            logger.debug("XML-Dateien: XML: {} / XSD: {}", pathToXMLFile, pathToXSDFile);
-            documentParser =  new DocumentParser(pathToXMLFile, pathToXSDFile);
+            descriptor =  new ShiftPlanDescriptor(Path.of(xmlPath));
         }
-        documentParser.parseDocument();
-        return documentParser;
+        try {
+            descriptor.parseDocument();
+        } catch (IOException | JDOMException ex) {
+            logger.error("Kann keinen ShiftPlan-Descriptor generieren!");
+            throw new ShiftPlanRunnerException(ex.getMessage());
+        }
+        return descriptor;
+    }
+
+    public SwapParams getOperationalParams() {
+        return SwapParams.readSwapParams();
+    }
+
+    public SwapParams getOperationalParams(String path) {
+        return SwapParams.readSwapParams(path);
     }
 
     private static Options getCLIArgs() throws ParseException {
@@ -266,23 +355,31 @@ public class ShiftPlanRunner {
 
         ShiftPlanRunner shiftPlanRunner = new ShiftPlanRunner();
         try {
-            DocumentParser parser = shiftPlanRunner.getDocumentParser(xmlPath);
-            Map<String, Object> dataModel = shiftPlanRunner.createShiftPlan(parser);
+            SwapParams swapParams = shiftPlanRunner.getOperationalParams();
+            Map<String, Object> dataModel;
+            if (swapParams.getMode() == OP_MODE.CREATE) {
+                dataModel = shiftPlanRunner.createShiftPlan(xmlPath, swapParams);
+            } else {
+                dataModel = shiftPlanRunner.modifyShiftPlan(swapParams);
+            }
             Path attachment = shiftPlanRunner.createPDF(templatePath, dataModel, outDir);
             logger.info("Neuer Schichtplan in '{}' gespeichert", attachment.toString());
 
             if (sendMail) {
                 if (password != null && !password.isBlank()) {
+                    Employee[] employees = (Employee[]) dataModel.get("employees");
                     EmailDispatch emailDispatch = new EmailDispatch(configPath);
-                    emailDispatch.sendMail(List.of(parser.getEmployees()), attachment, password);
+                    emailDispatch.sendMail(List.of(employees), attachment, password);
                 }
             }
-        } catch (IOException | JDOMException ex) {
-            logger.fatal("shiftplan.xml|shiftplan.xsd können nicht gelesen werden", ex);
+        } catch (IOException ex) {
+            logger.fatal("XML/XSD-Datei kamm nicht gelesen oder geschrieben werden", ex);
         } catch (TemplateException ex) {
             logger.fatal("Das FTL-Template kann nicht verarbeitet werden", ex);
         } catch (EmailException ex) {
             logger.error("Der Emailversand des Schichtplans ist gescheitert", ex);
+        } catch (ShiftPlanRunnerException | InvalidShiftPlanException | ShiftPlanSwapException ex) {
+            logger.fatal(ex.getMessage());
         }
     }
 }
