@@ -18,19 +18,18 @@ public class ShiftSwap {
         private final Employee employeeA;
         private final int undistributedHoA;
         private final Employee employeeB;
-        private int undistributedHoB;
+        private final int undistributedHoB;
 
         public SwapResult(OP_MODE swapMode, boolean swapHo,
                           Employee employeeA, int undistributedHoA,
-                          Employee employeeB, int... undistributedHoBOptional) {
+                          Employee employeeB, int undistributedHoB) {
             this.swapMode = Objects.requireNonNull(swapMode);
             this.swapHO = swapHo;
             this.employeeA = Objects.requireNonNull(employeeA);
             this.undistributedHoA = undistributedHoA;
             this.employeeB = Objects.requireNonNull(employeeB);
-            if (undistributedHoBOptional.length >= 1) {
-                this.undistributedHoB = undistributedHoBOptional[0];
-            }
+            this.undistributedHoB = undistributedHoB;
+
         }
 
         public OP_MODE getSwapMode() {
@@ -174,12 +173,18 @@ public class ShiftSwap {
         }
 
         if (swapMode == OP_MODE.REPLACE) {
-            int undistributedHoDays = 0;
             int cancelledHoDays = replaceLateShift(emp1, emp2, cwIndex1);
             if (swapHO) {
-                undistributedHoDays = swapHomeOfficeDays(emp1, emp2, cwIndex1, cancelledHoDays);
+                // Der replacer (emp2) verliert durch die Übernahme der Spätschicht eventuell HO-Tage
+                // Der replaced (emp1) kann eventuell die HO-Tage des replacers (emp2) übernehmen -> freeSlots
+                // Der Rückgabewert von swapHomeOfficeDays wird ignoriert, da er hier keinen Aussagewert hat
+                swapHomeOfficeDays(emp1, emp2, cwIndex1, getFreeHOSlotsInWeek(cwIndex1));
             }
-            return new SwapResult(swapMode, false, emp1, undistributedHoDays, emp2);
+            // Im REPLACE-Modus werden keine HO-Tage von replaced (emp1) storniert. Die Anzahl der stornierten
+            // HO-Tage beträgt daher immer 0
+            // Für replacer emp2 werden die stornierten HO-Tage festgehalten (es findet keine Neuzuteilung von
+            // HO-Tagen für den replacer statt)
+            return new SwapResult(swapMode, swapHO, emp1, 0, emp2, cancelledHoDays);
         } else if (swapMode == OP_MODE.SWAP) {
             int undistributedHoDaysEmp1 = 0;
             int undistributedHODaysEmp2 = 0;
@@ -227,8 +232,8 @@ public class ShiftSwap {
         int[] cancelledHoEmp1 = new int[1];
         int[] cancelledHoEmp2 = new int[1];
 
-        moveLateShift(emp1LateShifts, cwIndex1, lateShiftIndexOfEmp1, employee1, employee2, lateShiftPeriod, cancelledHoEmp1);
-        moveLateShift(emp2LateShifts, cwIndex2, lateShiftIndexOfEmp2, employee2, employee1, lateShiftPeriod, cancelledHoEmp2);
+        moveLateShift(emp1LateShifts, cwIndex1, lateShiftIndexOfEmp1, employee1, employee2, lateShiftPeriod, cancelledHoEmp2);
+        moveLateShift(emp2LateShifts, cwIndex2, lateShiftIndexOfEmp2, employee2, employee1, lateShiftPeriod, cancelledHoEmp1);
 
         Map<String, Integer> cancelledHoDays = new HashMap<>();
         cancelledHoDays.put(employee1.getId(), cancelledHoEmp1[0]);
@@ -318,12 +323,15 @@ public class ShiftSwap {
      *                beginnt. Je nachdem, wie viele Arbeitstage die Kalenderwoche hat und auf welchen Wochentag der
      *                Beginn dew Spätschichtzyklus fällt, kann sich der Spätschicht-Tausch auf eine, zwei oder sogar
      *                noch mehr Kalenderwochen erstrecken.
-     * @param cancelledHoDays Anzahl der HO-Tage, die der <code>hoCandidate</code> beim Spätschicht-Tausch verloren hat.
-     * @return Anzahl der verlorenen HO-Tage, die nicht neu eingeteilt werden konnten
+     * @param maxHoDaysToDistribute Maximale Anzahl der HO-Tage, die an den <code>hoCandidate</code> verteilt werden können.
+     *                              Dabei handelt es sich bei einem Spätschichttausch (SWAP) um die Anzahl der beim Tausch
+     *                              verloren (stornierten) HO-Tage.
+     *                              Beim Ersetzen (REPLACE) ist dies die Anzahl der freien Slots
+     * @return Differenz zwischen den maximal zu Verteilenden und den tatsächlich neu verteilten HO-Tagen
      */
-    int swapHomeOfficeDays(Employee hoCandidate, Employee newLateshift, int cwIndex, int cancelledHoDays) {
+    int swapHomeOfficeDays(Employee hoCandidate, Employee newLateshift, int cwIndex, int maxHoDaysToDistribute) {
         if (hoCandidate.getParticipationSchema() == Employee.PARTICIPATION_SCHEMA.LS) return 0;
-        // Ein Wert < 0 signalisiert, daß in der aktuell untersuchten KW kein Spätschichttausch stattgefunden hat und
+        // Ein Wert < 0 signalisiert, daß in der aktuell untersuchten KW nicht mehr vom Spätschichttausch betroffen ist und
         // die Schleife / Methode abgebrochen werden kann.
         while (getIndexOfFirstLateShift(simpleCalendarWeeks.get(cwIndex), newLateshift) >= 0) {
             logger.info("HomeOffice-Tage in Kalenderwoche {} werden (sofern möglich) verteilt", cwIndex);
@@ -335,12 +343,23 @@ public class ShiftSwap {
             // einem Dienstag, der Montag bleibt also als HomeOffice-Tag erhalten)
             int remainingWeeklyHoCredits = openHoCreditsInWeek(week, hoCandidate);
             logger.info("{} HomeOffice-Tage können in KW {} maximal zugewiesen werden", remainingWeeklyHoCredits, cwIndex);
-            while (dayIndex < week.length && cancelledHoDays > 0) {
+            while (dayIndex < week.length && maxHoDaysToDistribute > 0) {
+                // Der Verteilungsalgorithmus für die HO-Tage befolgt folgende Regeln:
+                //  - Max. <maxHODaysPerWeek> HO-Tage pro Woche
+                //  - Max. <maxHOSlotsPerDay> MA's im Home-Office an einem Tag
+                //  - Keinen Backup-Konflikt mit als Backup zugeteilten MA's
+                //  - Home-Office schließt Spätschicht aus und umgekehrt
+                // NICHT befolgt wird die <maxHODaysPerMonth> - Regel, da auf Basis der übergebenen Daten nicht geprüft
+                // werden kann, ob die maximale Anzahl von Home-Office-Tagen pro Monat bei der Zuteilung von HO-Tagen
+                // überschritten wird.
                 if (remainingWeeklyHoCredits == 0) {
                     logger.info("Alle HomeOffice-Optionen in KW {} erschöpft. Wechsel zur nächsten KW ...", cwIndex);
                     // Keine HO-Tage mehr in der laufenden Woche zu verteilen, Kalenderwochen-Index erhöhen, um mit der
                     // nächsten Kalenderwoche fortzufahren
                     ++cwIndex;
+                    if (swapMode == OP_MODE.REPLACE) {
+                        maxHoDaysToDistribute = getFreeHOSlotsInWeek(cwIndex);
+                    }
                     break;
                 }
                 ShiftPlanCopy.WorkDay workday = week[dayIndex];
@@ -350,20 +369,32 @@ public class ShiftSwap {
                     ++dayIndex;
                     continue;
                 }
-                if (workday.getFreeSlots() > 0 && !workday.hasBackupConflictWith(hoCandidate)) {
+                if (workday.getFreeSlots() > 0 && !workday.hasBackupConflictWith(hoCandidate) &&
+                        // In Ausnahmefällen (Wenn Spätschichten in benachbarten Kalenderwochen getauscht werden)
+                        // kann die Einteilung ins Homeoffice mit der Spätschichtzuteilung (infolge des Tauschs)
+                        // konfligieren
+                        !hoCandidate.equals(workday.getLateshift())) {
                     logger.info("HomeOffice-Einteilung am {} ({})", workday.getDate(), workday.getDayOfWeek());
                     workday.addEmployeeInHo(hoCandidate);
                     --remainingWeeklyHoCredits;
-                    --cancelledHoDays;
+                    --maxHoDaysToDistribute;
                 }
                 ++dayIndex;
             }
-            if (cancelledHoDays == 0) {
-                return 0;
+            if (maxHoDaysToDistribute == 0) {
+                if (swapMode == OP_MODE.SWAP) {
+                    // Die beim Spätschichttausch stornierten Homeoffice - Tage sind alle neu verteilt worden, die#
+                    // HO-Verteilung wird daher abgebrochen (nur bei SWAP-Mode)
+                    return 0;
+                }
             }
             ++cwIndex;
+            if (swapMode == OP_MODE.REPLACE) {
+                // Maximal zu verteilende HO-Tage für die nächste Kalenderwoche bestimmen
+                maxHoDaysToDistribute = getFreeHOSlotsInWeek(cwIndex);
+            }
         }
-        return cancelledHoDays;
+        return maxHoDaysToDistribute;
     }
 
     boolean indexOutOfRange(int index) {
@@ -406,6 +437,11 @@ public class ShiftSwap {
             }
         }
         return maxHoCreditsPerWeek - hoDaysCounter;
+    }
+
+    int getFreeHOSlotsInWeek(int cwIndex) {
+        ShiftPlanCopy.WorkDay[] week = simpleCalendarWeeks.get(cwIndex);
+        return Arrays.stream(week).mapToInt(ShiftPlanCopy.WorkDay::getFreeSlots).reduce(0, Integer::sum);
     }
 
     ShiftPlanCopy.WorkDay[] getAdjacentCalendarWeek(int cwIndex) {

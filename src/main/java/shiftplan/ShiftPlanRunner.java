@@ -30,8 +30,10 @@ public class ShiftPlanRunner {
 
     private static final Logger logger = LogManager.getLogger(ShiftPlanRunner.class);
 
-    public Map<String, Object> createShiftPlan(String xmlPath, SwapParams swapParams) {
-        assert swapParams.getMode() == OP_MODE.CREATE;
+    public Map<String, Object> createShiftPlan(String xmlPath, String shiftPlanCopyXMLFile, SwapParams swapParams) {
+        if (swapParams.getMode() != OP_MODE.CREATE) {
+            throw new ShiftPlanRunnerException("Ungültiger Operation-Mode: " +  swapParams.getMode().toString());
+        }
 
         ShiftPlanDescriptor descriptor = getShiftPlanDescriptor(xmlPath);
 
@@ -53,7 +55,7 @@ public class ShiftPlanRunner {
         HomeOfficeRecord.createHomeOfficeReport(employees, startDate, endDate);
         List<HomeOfficeRecord> records = HomeOfficeRecord.getAllRecords();
 
-        ShiftPlanSerializer serializer = new ShiftPlanSerializer(swapParams.getShiftplanCopyXMLFile());
+        ShiftPlanSerializer serializer = new ShiftPlanSerializer(shiftPlanCopyXMLFile);
         org.jdom2.Document doc = serializer.serializeShiftPlan(
                 year,
                 startDate,
@@ -76,17 +78,16 @@ public class ShiftPlanRunner {
         return dataModel;
     }
 
-    public Map<String, Object> modifyShiftPlan(SwapParams swapParams) {
+    public Map<String, Object> modifyShiftPlan(String shiftPlanCopyXMLFile, String shiftPlanCopySchemaDir,
+                                               SwapParams swapParams) {
         OP_MODE mode = swapParams.getMode();
-        Path XMLFile = swapParams.getShiftplanCopyXMLFile();
-        Path XSDDir = swapParams.getShiftPlanCopySchemaDir();
 
         try {
             String[] employeeSet1 = swapParams.getEmployeeSet1();
             String[] employeeSet2 = swapParams.getEmployeeSet2();
             boolean swapHo = swapParams.isSwapHo();
 
-            ShiftPlanSerializer serializer = new ShiftPlanSerializer(XMLFile, XSDDir);
+            ShiftPlanSerializer serializer = new ShiftPlanSerializer(shiftPlanCopyXMLFile, shiftPlanCopySchemaDir);
             ShiftPlanCopy copy = serializer.deserializeShiftplan();
 
             ShiftSwap swapper = new ShiftSwap(copy, mode, swapHo);
@@ -202,11 +203,19 @@ public class ShiftPlanRunner {
         return descriptor;
     }
 
+
     public SwapParams getOperationalParams() {
+        // swap_params.json als Resource im Klassenpfad (in erster Linie für Entwicklungs-/Testzwecke)
         return SwapParams.readSwapParams();
     }
 
-    public SwapParams getOperationalParams(String path) {
+    public SwapParams getOperationalParams(String paramString) {
+        // Swap - Parameter als String, der als CLI-Parameter an das Programm übergeben wird
+        return SwapParams.readFromString(paramString);
+    }
+
+    public SwapParams getOperationalParams(Path path) {
+        // swap_params.json mit Angabe eines Dateipfads
         return SwapParams.readSwapParams(path);
     }
 
@@ -265,6 +274,42 @@ public class ShiftPlanRunner {
                 .hasArg(false)
                 .build();
 
+        Option serSchemaPathOption = Option
+                .builder("v")
+                .longOpt("xmlSerSchemaPath")
+                .desc("Pfad zum XSD-Schema zur Validierung der shiftplan_serialised.xml - Datei. Das Schema und der " +
+                        "serialisierte Schichtplan müssen sich nicht im gleichen Verzeichnis befinden ")
+                .hasArg()
+                .argName("Pfad")
+                .build();
+
+        Option xmlSerializedIOption = Option
+                .builder("d")
+                .longOpt("xmlSerialized")
+                .desc("Pfad zur shiftplan-serialized.xml - Datei, die den serialisierten Schichtplan enthält")
+                .hasArg()
+                .argName("Datei-Pfad")
+                .build();
+
+        Option swapParamsOption = Option
+                .builder("m") // modify
+                .longOpt("swapData")
+                .desc("String der sämtliche Parameter für die Modifikation eines Schichtplans enthält")
+                .hasArg()
+                .argName("Swap-Parameter")
+                .build();
+
+        Option swapParamJSONOption = Option
+                .builder("j")
+                .longOpt("jsonSwapData")
+                .desc("Anstatt als CLI-Parameter (-m, --swapData) übergeben zu werden, können die Swap-Parameter auch" +
+                        "vor Aufruf des Programms in einer Json-Datei (swap_params.json) hinterlegt werden. In diesem" +
+                        "Fall ist jedoch der Pfad zur JSON-Datei anzugeben. Der Programmaufruf kann entweder mit dem Pfad" +
+                        "zu dieser Datei oder mit der direkten Übergabe der Parameter auf der Kommandozeile erfolgen")
+                .hasArg()
+                .argName("Swap-Parameter (JSON)")
+                .build();
+
         Option helpOption = new Option("h", "help", false, "Diese Nachricht drucken");
 
         Options options = new Options();
@@ -275,7 +320,10 @@ public class ShiftPlanRunner {
         options.addOption(configOption);
         options.addOption(pwdOption);
         options.addOption(sendMailOption);
-
+        options.addOption(serSchemaPathOption);
+        options.addOption(xmlSerializedIOption);
+        options.addOption(swapParamsOption);
+        options.addOption(swapParamJSONOption);
 
         return options;
     }
@@ -291,6 +339,19 @@ public class ShiftPlanRunner {
         //          Emailversand aktiviert
         // -s, --sendMail: Option nur angeben, wenn Emailversand aktiviert werden soll - setzt eine Konfigurationsdatei
         //          mit vollständigen SMTP-Parametern und Angabe eines gültigen Passworts voraus
+        // -v, --xmlSerSchemaPath: Pfad zur XSD (Schema) - Datei zur Validierung des serialisierten Schichtplans. Die
+        //          Schema-Datei und shiftplan_serialized.xml müssen nicht unbedingt im gleichen Verzeichnis liegen
+        // -d, --xmlSerialized: Pfad zu shiftplan_serialized.xml - in dieser Datei befindet sich die jeweils aktuelle
+        //          Version des in XML-kodierten Schichtplans
+        // -m, --swapData: Swap-Parameter-String der sämtliche Parameter für die Modifikation eines Schichtplans enthält.
+        //          Die Swap-Parameter (zur Modifikation des Schichtplans) können entweder mithilfe dieses CLI-Parameters
+        //          oder mit einer JSON-Datei (swap_params.json) an das Programm übergeben werden
+        // -j, --jsonSwapData: Anstatt als CLI-Parameter (-m, --swapData) übergeben zu werden, können die Swap-Parameter
+        //          auch vor Aufruf des Programms in einer Json-Datei (swap_params.json) hinterlegt werden. In diesem
+        //          Fall ist jedoch der Pfad zur JSON-Datei anzugeben. Der Programmaufruf kann entweder mit dem Pfad zu
+        //          dieser Datei oder mit der direkten Übergabe der Parameter auf der Kommandozeile erfolgen (bei
+        //          entferntem Aufruf des Programms via SSH müssen die Parameter als Kommandozeilen-Parameter übergeben
+        //          werden
 
         // Nicht auskommentieren - keine Ausgabe des Passworts in Klartext !!
         // logger.trace("ShiftplanRunner gestartet mit den Argumenten: {}", Arrays.toString(args));
@@ -314,6 +375,10 @@ public class ShiftPlanRunner {
         String configPath = null;
         String password = null;
         boolean sendMail = false;
+        String shiftPlanCopyXSDDir = null;
+        String shiftPlanCopyXMLFile = null;
+        String swapParamsString = null;
+        Path swapParamsFile = null;
 
 
         if (cmd.hasOption("h")) {
@@ -344,23 +409,48 @@ public class ShiftPlanRunner {
             sendMail = true;
         }
 
+        if (cmd.hasOption("v")) {
+            shiftPlanCopyXSDDir = cmd.getOptionValue("v");
+        }
+
+        if (cmd.hasOption("d")) {
+            shiftPlanCopyXMLFile = cmd.getOptionValue("d");
+        }
+
+        if (cmd.hasOption("m")) {
+            swapParamsString = cmd.getOptionValue("m");
+        }
+
+        if (cmd.hasOption("j")) {
+            swapParamsFile = Path.of(cmd.getOptionValue("j"));
+        }
+
         logger.info("shiftplan mit folgenden Argumenten aufgerufen:");
         logger.info("xmlPath: {}", xmlPath);
         logger.info("templatePath: {}", templatePath);
         logger.info("outDir:  {}", outDir);
         logger.info("configPath: {}", configPath);
         logger.info("sendMail: {}", sendMail);
-
-
+        logger.info("Verzeichnis für XSD-Schema für serialisierten Schichtplan: {}", shiftPlanCopyXSDDir);
+        logger.info("Pfad zu shiftplan_serialized.xml: {}", shiftPlanCopyXMLFile);
+        logger.info("Per CLI übergebene Swap-Parameter: {}", swapParamsString);
+        logger.info("Per swap_parameter.json übergebene Swap-Parameter: {}", swapParamsFile);
 
         ShiftPlanRunner shiftPlanRunner = new ShiftPlanRunner();
+        SwapParams swapParams;
         try {
-            SwapParams swapParams = shiftPlanRunner.getOperationalParams();
+            if (swapParamsString != null && !swapParamsString.isEmpty()) {
+                swapParams = shiftPlanRunner.getOperationalParams(swapParamsString);
+            } else if (swapParamsFile != null) {
+                swapParams = shiftPlanRunner.getOperationalParams(swapParamsFile);
+            } else {
+                swapParams = shiftPlanRunner.getOperationalParams();
+            }
             Map<String, Object> dataModel;
             if (swapParams.getMode() == OP_MODE.CREATE) {
-                dataModel = shiftPlanRunner.createShiftPlan(xmlPath, swapParams);
+                dataModel = shiftPlanRunner.createShiftPlan(xmlPath, shiftPlanCopyXMLFile, swapParams);
             } else {
-                dataModel = shiftPlanRunner.modifyShiftPlan(swapParams);
+                dataModel = shiftPlanRunner.modifyShiftPlan(shiftPlanCopyXMLFile, shiftPlanCopyXSDDir, swapParams);
             }
             Path attachment = shiftPlanRunner.createPDF(templatePath, dataModel, outDir);
             logger.info("Neuer Schichtplan in '{}' gespeichert", attachment.toString());
@@ -380,6 +470,8 @@ public class ShiftPlanRunner {
             logger.error("Der Emailversand des Schichtplans ist gescheitert", ex);
         } catch (ShiftPlanRunnerException | InvalidShiftPlanException | ShiftPlanSwapException ex) {
             logger.fatal(ex.getMessage());
+        } catch (RuntimeException ex) {
+            logger.fatal("Fehler bei Ausführung des Programms", ex);
         }
     }
 }

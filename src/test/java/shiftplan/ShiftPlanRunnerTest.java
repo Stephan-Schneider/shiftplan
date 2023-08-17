@@ -17,6 +17,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ShiftPlanRunnerTest {
 
+    private static final String shiftPlanCopy = "/home/stephan/Projekte/Web/shiftplan_serialized.xml";
+    private static final String getShiftPlanCopyXSD = "/home/stephan/Projekte/Web";
+
     private SwapParams swapParams;
 
     @BeforeEach
@@ -31,13 +34,14 @@ class ShiftPlanRunnerTest {
     @Test
     void testInconsistentEmployeeParams() {
         ShiftPlanRunner runner = new ShiftPlanRunner();
-        assertThrows(ShiftPlanSwapException.class, () -> runner.modifyShiftPlan(swapParams));
+        assertThrows(ShiftPlanSwapException.class,
+                () -> runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams));
     }
 
     @Test
     void testSwapResult() {
         ShiftPlanRunner runner = new ShiftPlanRunner();
-        Map<String, Object> dataModel = runner.modifyShiftPlan(swapParams);
+        Map<String, Object> dataModel = runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams);
         ShiftSwap.SwapResult swapResult = (ShiftSwap.SwapResult) dataModel.get("swapResult");
         assertAll(
                 () -> assertEquals(OP_MODE.SWAP, swapResult.getSwapMode()),
@@ -49,7 +53,7 @@ class ShiftPlanRunnerTest {
     @Test
     void testConverter() {
         ShiftPlanRunner runner = new ShiftPlanRunner();
-        Map<String, Object> dataModel = runner.modifyShiftPlan(swapParams);
+        Map<String, Object> dataModel = runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams);
         Map<String, Shift> shiftPlan = (Map<String, Shift>) dataModel.get("shiftPlan");
         LocalDate testDate = LocalDate.of(2023, 4,3);
         LocalDate testDate2 = LocalDate.of(2023,4,4);
@@ -65,7 +69,7 @@ class ShiftPlanRunnerTest {
     void testModifyPlan() {
         ShiftPlanRunner runner = new ShiftPlanRunner();
         SwapParams swapParams = runner.getOperationalParams();
-        Map<String, Object> dataModel = runner.modifyShiftPlan(swapParams);
+        Map<String, Object> dataModel = runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams);
 
         assertAll(
                 () -> assertEquals(LocalDate.of(2023,4,1), dataModel.get("startDate")),
@@ -77,7 +81,7 @@ class ShiftPlanRunnerTest {
     void testCreatePlanWithPDF() throws TemplateException, IOException {
         ShiftPlanRunner runner = new ShiftPlanRunner();
         SwapParams swapParams = runner.getOperationalParams();
-        Map<String, Object> dataModel = runner.createShiftPlan(null, swapParams);
+        Map<String, Object> dataModel = runner.createShiftPlan(null, shiftPlanCopy, swapParams);
         Path attachment = runner.createPDF(null, dataModel, System.getProperty("user.home"));
         assertNotNull(attachment);
     }
@@ -86,7 +90,7 @@ class ShiftPlanRunnerTest {
     void testModifyWithPDF() throws TemplateException, IOException {
         ShiftPlanRunner runner = new ShiftPlanRunner();
         SwapParams swapParams = runner.getOperationalParams();
-        Map<String, Object> dataModel = runner.modifyShiftPlan(swapParams);
+        Map<String, Object> dataModel = runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams);
         Path attachment = runner.createPDF(null, dataModel, System.getProperty("user.home"));
         assertNotNull(attachment);
     }

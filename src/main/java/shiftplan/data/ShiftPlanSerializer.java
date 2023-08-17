@@ -42,6 +42,26 @@ public class ShiftPlanSerializer {
      */
     public ShiftPlanSerializer() {}
 
+    /**
+     * ShiftPlanSerializer in Write-Only - Modus
+     *
+     * @param xmlFile Pfad zur XML-Datei, in die die Objekt-Repräsentation des Schichtplans geschrieben wird
+     */
+    public ShiftPlanSerializer(String xmlFile) {
+        this(Path.of(xmlFile));
+    }
+
+    /**
+     * ShiftPlanSerializer in Read-/Write - Modus
+     *
+     * @param xmlFile Pfad zur XML-Datei, in die die Objekt-Repräsentation des Schichtplans geschrieben wird
+     * @param xsdDir Pfad zum Verzeichnis, in welchem sich die XML-Schema - Datei 'shiftplan_serialized.xsd' befindet,
+     *               die zur Validierung der XML - Datendatei (shiftplan_serialized.xml) verwendet wird.
+     */
+    public ShiftPlanSerializer(String xmlFile, String xsdDir) {
+        this(Path.of(xmlFile), Path.of(xsdDir));
+    }
+
 
     /**
      * ShiftPlanSerializer in Write-Only - Modus
@@ -55,7 +75,8 @@ public class ShiftPlanSerializer {
         this.xmlFile = xmlFile;
     }
 
-    /**ShiftPlanSerializer in Read-/Write - Modus
+    /**
+     * ShiftPlanSerializer in Read-/Write - Modus
      *
      * @param xmlFile Pfad zur XML-Datei, in die die Objekt-Repräsentation des Schichtplans geschrieben wird
      * @param xsdDir Pfad zum Verzeichnis, in welchem sich die XML-Schema - Datei 'shiftplan_serialized.xsd' befindet,

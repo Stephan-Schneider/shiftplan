@@ -212,7 +212,7 @@
             border: 1px solid black;
         }*/
 
-        #undistributedHo > tbody td {
+        #undistributedHo tbody td {
             padding: 5px;
             font-size: 0.8em;
             border: 1px solid black;
@@ -386,7 +386,7 @@
                 </#list>
             </tbody>
         </table>
-        <#elseif swapResult?? && swapResult.swapMode.name() == "SWAP" && swapResult.swapHO>
+        <#elseif swapResult?? && swapResult.swapHO>
         <table id="undistributedHo">
             <caption class="homeoffice-control-caption">
                 <h4>Durch Schichtwechsel bedingte Reduzierung der Homeoffice-Tage (${swapResult.swapMode.name()})</h4>

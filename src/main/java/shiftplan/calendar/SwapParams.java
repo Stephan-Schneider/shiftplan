@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.stream.IntStream;
 
 @JsonIgnoreProperties({"mode_comment1", "mode_comment2", "employee_comment1", "employee_comment2", "swapHomeOffice_comment"})
 public class SwapParams {
@@ -21,13 +22,11 @@ public class SwapParams {
     private static final Logger logger = LogManager.getLogger(SwapParams.class);
 
     private OP_MODE mode;
-    private Path shiftplanCopyXMLFile;
-    private Path shiftPlanCopySchemaDir;
     private String[] employeeSet1;
     private String[] employeeSet2;
     private boolean swapHo;
 
-    public static SwapParams readSwapParams(String... path) throws ShiftPlanRunnerException {
+    public static SwapParams readSwapParams(Path... path) throws ShiftPlanRunnerException {
         logger.info("Die Parameter werden ausgelesen");
         logger.debug("path: {}", Arrays.toString(path));
 
@@ -62,23 +61,82 @@ public class SwapParams {
         }
     }
 
-    private static SwapParams readFromFile(ObjectMapper mapper, String pathToParamFile) {
+    private static SwapParams readFromFile(ObjectMapper mapper, Path pathToParamFile) {
         // <pathToParamFile> enthält den vollständigen Pfad zur Parameterdatei. Der voreingestellte Name dieser
         // Datei ist 'swap_params.json'. Falls der Dateiname geändert wird, muss der neue Pfad (inklusive dem neuen
         // Dateinamen) in shiftplan.sh angegeben werden.
         assert mapper != null;
         logger.info("Die Parameterdatei wird aus einem File-Objekt gelesen");
-        Path path = Path.of(pathToParamFile);
-        if (!Files.isRegularFile(path) || !Files.isReadable(path)) {
+        if (!Files.isRegularFile(pathToParamFile) || !Files.isReadable(pathToParamFile)) {
             throw new ShiftPlanRunnerException(
                     "Der Dateipfad zur Parameterdatei (swap_params.json) '" + pathToParamFile +"' ist ungültig");
         }
         try {
-            return mapper.readValue(path.toFile(), SwapParams.class);
+            return mapper.readValue(pathToParamFile.toFile(), SwapParams.class);
         } catch (IOException ex) {
             logger.error("Ausnahme beim Zugriff auf Parameterdatei (swap_params.json)", ex);
             throw new ShiftPlanRunnerException(ex.getMessage());
         }
+    }
+
+    public static SwapParams readFromString(String paramString) {
+        // Parameter müssen in folgender Reihenfolge, getrennt durch Komma, angegeben werden:
+        // "SWAP|REPLACE,true|false,emp1-ID,cwIndex1,emp2-ID,(cwIndex2)"
+        // Modus CREATE: Anzahl Parameter = 1
+        // Modus SWAP: Anzahl Parameter = 6
+        // Modus REPLACE: Anzahl Parameter = 5
+        Objects.requireNonNull(paramString, "Keine Parameter vorhanden!");
+        paramString = paramString.strip();
+
+        SwapParams swapParams = new SwapParams();
+
+        String[] paramArray = paramString.split("\\s*,\\s*");
+        String modeStr = paramArray.length > 0 ? paramArray[0].toUpperCase() : null;
+        if (modeStr == null) {
+            throw new ShiftPlanSwapException("Ungültige Parameter-Übergabe!");
+        }
+        switch (modeStr) {
+            case "CREATE" -> {
+                swapParams.setMode(OP_MODE.valueOf(modeStr));
+                // Weitere Parameter aus swap_params.json werden für die Erstellung eines neuen Schichtplans nicht
+                // benötigt, SwapParams-Objekt daher an dieser Stelle schon zurückgeben
+                return swapParams;
+            }
+            case "SWAP" -> Objects.checkIndex(5, paramArray.length);
+            case "REPLACE" -> Objects.checkIndex(4, paramArray.length);
+            default -> throw new ShiftPlanSwapException("Ungültige Parameter-Übergabe!");
+        }
+
+        swapParams.setMode(OP_MODE.valueOf(modeStr));
+        IntStream.range(1, paramArray.length).forEach(index -> {
+            switch (index) {
+                case 1:
+                    swapParams.setSwapHo(Boolean.parseBoolean(paramArray[index]));
+                    break;
+                case 2:
+                    String emp1ID = paramArray[index];
+                    if (emp1ID.matches("ID-\\d{1,2}")) {
+                        swapParams.setEmployeeSet1(new String[]{emp1ID, paramArray[index + 1]});
+                    }
+                    break;
+                case 4:
+                    String emp2ID = paramArray[index];
+                    if (emp2ID.matches("ID-\\d{1,2}"))  {
+                        if (swapParams.getMode() == OP_MODE.SWAP) {
+                            swapParams.setEmployeeSet2(new String[]{emp2ID, paramArray[index + 1]});
+                        } else {
+                            swapParams.setEmployeeSet2(new String[]{emp2ID});
+                        }
+                    }
+                    break;
+                default:
+                    if (index >= paramArray.length) {
+                        throw new ShiftPlanSwapException("Ungültige Anzahl von Parametern!");
+                    }
+            }
+        });
+
+        return swapParams;
     }
 
 
@@ -90,22 +148,6 @@ public class SwapParams {
 
     public void setMode(OP_MODE mode) {
         this.mode = mode;
-    }
-
-    public Path getShiftplanCopyXMLFile() {
-        return shiftplanCopyXMLFile;
-    }
-
-    public void setShiftplanCopyXMLFile(Path copy) {
-        this.shiftplanCopyXMLFile = copy;
-    }
-
-    public Path getShiftPlanCopySchemaDir() {
-        return shiftPlanCopySchemaDir;
-    }
-
-    public void setShiftPlanCopySchemaDir(Path shiftPlanCopySchemaDir) {
-        this.shiftPlanCopySchemaDir = shiftPlanCopySchemaDir;
     }
 
     @JsonProperty("employeeA")

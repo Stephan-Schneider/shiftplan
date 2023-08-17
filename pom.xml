@@ -88,7 +88,6 @@
             <version>2.15.0</version>
             <scope>compile</scope>
         </dependency>
-
     </dependencies>
 
     <build>
@@ -196,6 +195,7 @@
                                     <directory>${project.basedir}/src/main/resources</directory>
                                     <includes>
                                         <include>mail_config.txt</include>
+                                        <include>swap_params.json</include>
                                     </includes>
                                 </resource>
                             </resources>

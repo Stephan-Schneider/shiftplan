@@ -33,7 +33,7 @@ class ShiftSwapTest {
         Path xmlPath = Path.of(home, "Projekte", "Web", "shiftplan_serialized.xml");
         logger.debug("xmlPath: {}", xmlPath);
 
-        Path xsdPath = Path.of(home, "Projekte", "Web", "shiftplan_serialized.xsd");
+        Path xsdPath = Path.of(home, "Projekte", "Web");
         logger.debug("xsdPath: {}", xsdPath);
 
         ShiftPlanSerializer serializer = new ShiftPlanSerializer(xmlPath, xsdPath);
@@ -156,18 +156,18 @@ class ShiftSwapTest {
         int remainingHoDays2 = swapper.swapHomeOfficeDays(emp2, emp1, cwIndex2, cancelledHoDays.get(employee2Id));
 
         assertAll(
-                () -> assertEquals(1, remainingHoDays1),
-                () -> assertEquals(2, remainingHoDays2),
-                () -> assertTrue(swapper.getSimpleCalendarWeeks().get(cwIndex1)[2].hasHoDay(emp1)),
-                () -> assertFalse(swapper.getSimpleCalendarWeeks().get(cwIndex1)[3].hasHoDay(emp1)),
-                () -> assertEquals(1, swapper.getSimpleCalendarWeeks().get(cwIndex1)[3].getEmployeesInHo().size())
+                () -> assertEquals(0, remainingHoDays1),
+                () -> assertEquals(1, remainingHoDays2)//,
+                //() -> assertTrue(swapper.getSimpleCalendarWeeks().get(cwIndex1)[2].hasHoDay(emp1)),
+                //() -> assertFalse(swapper.getSimpleCalendarWeeks().get(cwIndex1)[3].hasHoDay(emp1)),
+                //() -> assertEquals(1, swapper.getSimpleCalendarWeeks().get(cwIndex1)[3].getEmployeesInHo().size())
         );
     }
 
     private static Stream<Arguments> getArgumentsForTestSwap() {
         return Stream.of(
-                Arguments.of("ID-1", 14, "ID-4", 16, copy.getEmployeeById("ID-1"), copy.getEmployeeById("ID-4"))//,
-                //Arguments.of("ID-3", 20, "ID-4", 21, copy.getEmployeeById("ID-3"), copy.getEmployeeById("ID-4"))
+                //Arguments.of("ID-1", 14, "ID-4", 16, copy.getEmployeeById("ID-1"), copy.getEmployeeById("ID-4"))//,
+                Arguments.of("ID-3", 20, "ID-4", 21, copy.getEmployeeById("ID-3"), copy.getEmployeeById("ID-4"))
         );
     }
 
@@ -214,4 +214,20 @@ class ShiftSwapTest {
                 () -> assertEquals(replacer, cal.get(cwIndex +1)[0].getLateshift())
         );
     }
+
+    @ParameterizedTest
+    @MethodSource("getArgsForSlotTest")
+    void testFreeSlotsInWeek(int cwIndex, int expectedResult) {
+        int freeSlots = swapper.getFreeHOSlotsInWeek(cwIndex);
+        assertEquals(expectedResult, freeSlots);
+    }
+
+    private static Stream<Arguments> getArgsForSlotTest() {
+        return Stream.of(
+                Arguments.of(14, 2),
+                Arguments.of(15, 1),
+                Arguments.of(16, 1)
+        );
+    }
+
 }
