@@ -16,13 +16,13 @@ public class ShiftCalendar {
     private static final Logger logger = LogManager.getLogger(ShiftCalendar.class);
 
     private int calendarForYear;
-    record CalendarInfo(int calendarWeekIndex, LocalDate dateBoundary) {}
+    public record CalendarInfo(int calendarWeekIndex, LocalDate dateBoundary) {}
 
     public ShiftCalendar() {}
 
     public ShiftCalendar(int year) {calendarForYear = year;}
 
-    LocalDate getFirstCalendarWeekStart(int year) {
+    public LocalDate getFirstCalendarWeekStart(int year) {
         LocalDate firstDay = LocalDate.of(year,1,1); // 01. Januar des Jahres <year>
         LocalDate firstDayPlusSeven = firstDay.plusDays(7);
         LocalDate firstThursday = firstDay
@@ -128,7 +128,7 @@ public class ShiftCalendar {
         return calendarWeeks;
     }
 
-    CalendarInfo getCalendarWeekOfDate(final LocalDate firstDayInCalendar, final LocalDate date, boolean calendarStart) {
+    public CalendarInfo getCalendarWeekOfDate(final LocalDate firstDayInCalendar, final LocalDate date, boolean calendarStart) {
         // Ermitteln der Kalenderwoche anhand eines Start- bzw. Enddatums. Die ermittelte Start- und Endkalenderwoche
         // bestimmen die in shiftplan.xml definierte Zeitspanne des Kalenders (z.B. vom 01.04. - 30.09.)
         boolean startDateIsWeekend =

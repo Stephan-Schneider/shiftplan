@@ -69,11 +69,19 @@ swapData=""
 # durch einen SSH-Client aufgerufen wird, sollten die Parameter als CLI-Args übergeben werden
 swapDataJSON=${install_dir}/swap_data.json
 
+# Indikator, ob eine Mitarbeiter-Liste erstellt werden soll (siehe $staffListDir)
+query=false
+
+# Pfad zum Verzeichnis, in welches die von der shiftplan-Anwendung erstellte Mitarbeiter-Liste gespeichert wird.
+# Diese wird durch das Shiftplan Remote-Tool in die GUI geladen, um dem Benutzer Auswahloptionen anzubieten
+# Das Default-Verzeichnis ist /tmp
+staffListDir=/tmp
+
 # shellcheck disable=SC1009
 help() {
   echo "Skript zum Starten der shiftplan - App"
   echo
-  echo "Aufruf: shiftplan.sh [-h|-x|-t|-o|-c|-s|-p|-i|-v|-d|-m|-j]"
+  echo "Aufruf: shiftplan.sh [-h|-x|-t|-o|-c|-s|-p|-i|-v|-d|-m|-j|-q|-l]"
   echo "Optionen:"
   echo "-h  Druckt diese Hilfenachricht"
   echo "-x  Pfad zum XML-Ordner. Enthält shiftplan.xml und shiftplan.xsd. Obligatorisch, wenn der Ordner außerhalb des Installationsverzeichnis liegt"
@@ -87,9 +95,11 @@ help() {
   echo "-d  Pfad zur XML-Datei, welche die Kopie des Schichtplans enthält (shiftplan_serialized.xml)"
   echo "-m  Parameter-String, der die für die Modifizierung eines Schichtplans benötigten Parameter in einem festgelegten Format enthält"
   echo "-j  Pfad zur JSON-Datei, welche die zur Modifikation eines Schichtplans benötigten Parameter enthält"
+  echo "-q  query-Option: Nur angeben wenn eine Mitarbeiter-Liste erstellt werden soll"
+  echo "-l  Pfad zum Verzeichnis, das die Datei mit der Mitarbeiter-Liste enthält. Wird nur erstellt, wenn auch die Option -q (query) angegeben wird"
 }
 
-while getopts "hx:t:o:c:sp:iv:d:m:j:" option 2>/dev/null; do
+while getopts "hx:t:o:c:sp:iv:d:m:j:ql:" option 2>/dev/null; do
   case $option in
   h) # Hilfe-Text ausgeben
     help
@@ -116,6 +126,10 @@ while getopts "hx:t:o:c:sp:iv:d:m:j:" option 2>/dev/null; do
     swapData=$OPTARG;;
   j) # Pfad zur JSON-Datei mit den Operations-Parametern für das Ändern eines Schichtplans (Schichttausch)
     swapDataJSON=$OPTARG;;
+  q) # Mitarbeiter-Liste erstellen
+    query=true;;
+  l) # Pfad zum Verzeichnis der Mitarbeiter-Liste
+    staffListDir=$OPTARG;;
   *) # Ungültige Option
     echo "Ungültige Option - Skript wird beendet"
     exit ;;
@@ -125,6 +139,17 @@ done
 
 echo "Starten der shiftplan - Anwendung aus Verzeichnis ${install_dir} ..."
 
+### java muss mit dem absolutem Pfad aufgerufen werden !!
+### Grund: Bei entferntem Zugriff auf shiftplan.sh via ssh wird eine nicht-interaktive Shell kreiert, die Pfad- und
+### JAVA_HOME-Variabeln in .profile werden nicht in den Speicher geladen, was dazu führt, dass eventuell eine andere
+### als die intendierte Version des JDK's gestartet wird und Versions-Konflikte auftreten.
+
+if [ "$query" = true ]; then
+    /opt/java/jdk-17.0.2+8/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -v "$shiftPlanCopySchemaPath" \
+    -d "$shiftPlanCopyXMLFile" -q -l "$staffListDir"
+    exit 0 # Skript stoppen - keine weitere Aktion erforderlich oder sinnvoll
+fi
+
 if [ "$sendEmail" = true ] && [ "$interactive" = true ]; then
     echo "Bitte das Passwort für den Email-Account des Absenders eingeben:"
     read -s -r smtpPassword
@@ -132,10 +157,10 @@ if [ "$sendEmail" = true ] && [ "$interactive" = true ]; then
 fi
 
 if [ "$sendEmail" = true ]; then
-  java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
+  opt/java/jdk-17.0.2+8/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
   -o "$outDir" -c "$configPath" -p "$smtpPassword" -s -v "$shiftPlanCopySchemaPath" -d "$shiftPlanCopyXMLFile" \
   -m "$swapData" -j "$swapDataJSON"
 else
-  java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
+  opt/java/jdk-17.0.2+8/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
   -o "$outDir" -v "$shiftPlanCopySchemaPath" -d "$shiftPlanCopyXMLFile" -m "$swapData" -j "$swapDataJSON"
 fi

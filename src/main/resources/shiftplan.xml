@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <shiftplan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
- xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2023" start-date="2023-04" end-date="2023-06">
+ xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2023" start-date="2023-09" end-date="2023-12">
 
     <public-holidays>
         <holiday name="Neujahr" date="2023-01-01"/>

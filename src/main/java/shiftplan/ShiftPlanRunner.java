@@ -16,6 +16,7 @@ import shiftplan.document.TemplateProcessor;
 import shiftplan.publish.EmailDispatch;
 import shiftplan.users.Employee;
 import shiftplan.users.HomeOfficeRecord;
+import shiftplan.users.StaffList;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -25,6 +26,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class ShiftPlanRunner {
 
@@ -120,6 +122,20 @@ public class ShiftPlanRunner {
             String error = "Die employeeA-Daten müssen immer die ID sowie den KW-Index enthalten. Die employeeB-Daten " +
                     "müssen im Operation-Modus SWAP die ID und den KW-Index, im REPLACE-Modus die ID enthalten";
             throw new ShiftPlanSwapException(error);
+        }
+    }
+
+    public void createStaffList(String shiftPlanCopyXMLFile, String shiftPlanCopySchemaDir, String staffListDir) {
+        try {
+            ShiftPlanSerializer serializer = new ShiftPlanSerializer(shiftPlanCopyXMLFile, shiftPlanCopySchemaDir);
+            ShiftPlanCopy copy = serializer.deserializeShiftplan();
+
+            StaffList staffList = new StaffList(copy, staffListDir);
+            Map<String, StaffList.StaffData> employeeList = staffList.createStaffList();
+            String printed = staffList.printStaffList(employeeList);
+            staffList.writeToFile(printed);
+        } catch (NullPointerException | IllegalArgumentException | IOException | JDOMException ex) {
+            throw new ShiftPlanRunnerException(ex.getMessage());
         }
     }
 
@@ -310,6 +326,26 @@ public class ShiftPlanRunner {
                 .argName("Swap-Parameter (JSON)")
                 .build();
 
+        Option queryStaffListOption = Option
+                .builder("q")
+                .longOpt("query")
+                .desc("Erstellung einer Mitarbeiter-Liste, enthaltend die MA-Id, Vorname + Name ('DisplayName) " +
+                        "und eine Liste der Spätschicht - Kalenderwochenindizes. Die Liste wird in einer Datei gespeichert " +
+                        "und vom Shiftplan Remote-Tool abgefragt, um Auswahllisten in der GUI mit den MA-Daten zu befüllen")
+                .hasArg(false)
+                .build();
+
+        Option staffListPathOption = Option
+                .builder("l") // list staff
+                .longOpt("list")
+                .desc("Pfad zur Mitarbeiter-Liste - wird nur berücksichtigt wenn auch die Option -q (--query) " +
+                        "angegeben wird")
+                .hasArg()
+                .argName("staffListDirPath")
+                .build();
+
+
+
         Option helpOption = new Option("h", "help", false, "Diese Nachricht drucken");
 
         Options options = new Options();
@@ -324,6 +360,8 @@ public class ShiftPlanRunner {
         options.addOption(xmlSerializedIOption);
         options.addOption(swapParamsOption);
         options.addOption(swapParamJSONOption);
+        options.addOption(queryStaffListOption);
+        options.addOption(staffListPathOption);
 
         return options;
     }
@@ -352,6 +390,11 @@ public class ShiftPlanRunner {
         //          dieser Datei oder mit der direkten Übergabe der Parameter auf der Kommandozeile erfolgen (bei
         //          entferntem Aufruf des Programms via SSH müssen die Parameter als Kommandozeilen-Parameter übergeben
         //          werden
+        // -q, --query: Erstellung einer Mitarbeiter-Liste, enthaltend die MA-Id, Vorname + Name ('DisplayName)
+        //           und eine Liste der Spätschicht - Kalenderwochenindizes. Die Liste wird in einer Datei gespeichert
+        //           und vom Shiftplan Remote-Tool abgefragt, um Auswahllisten in der GUI mit den MA-Daten zu befüllen
+        // -l, --list: Pfad zur Mitarbeiter-Liste - wird nur berücksichtigt wenn auch die Option -q (--query)
+        //           angegeben wird
 
         // Nicht auskommentieren - keine Ausgabe des Passworts in Klartext !!
         // logger.trace("ShiftplanRunner gestartet mit den Argumenten: {}", Arrays.toString(args));
@@ -379,7 +422,10 @@ public class ShiftPlanRunner {
         String shiftPlanCopyXMLFile = null;
         String swapParamsString = null;
         Path swapParamsFile = null;
+        boolean query = false;
+        String staffListDir = null;
 
+        Objects.requireNonNull(cmd, "Keine Kommandozeile generiert!");
 
         if (cmd.hasOption("h")) {
             HelpFormatter formatter = new HelpFormatter();
@@ -424,6 +470,13 @@ public class ShiftPlanRunner {
         if (cmd.hasOption("j")) {
             swapParamsFile = Path.of(cmd.getOptionValue("j"));
         }
+        if (cmd.hasOption("q")) {
+            query = true;
+        }
+
+        if (cmd.hasOption("l")) {
+            staffListDir = cmd.getOptionValue("l");
+        }
 
         logger.info("shiftplan mit folgenden Argumenten aufgerufen:");
         logger.info("xmlPath: {}", xmlPath);
@@ -435,8 +488,14 @@ public class ShiftPlanRunner {
         logger.info("Pfad zu shiftplan_serialized.xml: {}", shiftPlanCopyXMLFile);
         logger.info("Per CLI übergebene Swap-Parameter: {}", swapParamsString);
         logger.info("Per swap_parameter.json übergebene Swap-Parameter: {}", swapParamsFile);
+        logger.info("query: {}", query);
+        logger.info("Pfad zum Mitarbeiter-Verzeichnis: {}", staffListDir);
 
         ShiftPlanRunner shiftPlanRunner = new ShiftPlanRunner();
+        if (query) {
+            shiftPlanRunner.createStaffList(shiftPlanCopyXMLFile, shiftPlanCopyXSDDir, staffListDir);
+            return;
+        }
         SwapParams swapParams;
         try {
             if (swapParamsString != null && !swapParamsString.isEmpty()) {
