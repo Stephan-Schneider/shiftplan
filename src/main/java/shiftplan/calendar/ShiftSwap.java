@@ -126,7 +126,6 @@ public class ShiftSwap {
      * Ändert den Schichtplan entweder in Form eines Spätschicht-Tauschs (SWAP_MODE.SWAP) oder indem
      * der Mitarbeiter mit ID <code>employee2ID</code> die Spätschicht vom Mitarbeiter mit ID <code>employee1Id</code>
      * übernimmt (SWAP_MODE.REPLACE) - ohne reziproken Tausch.
-     *
      * Optional können auch die durch die Änderung des Spätschichtplans eventuell entfallenden HomeOffice-Tage soweit
      * möglich verschoben werden.
      *
@@ -176,9 +175,9 @@ public class ShiftSwap {
             int cancelledHoDays = replaceLateShift(emp1, emp2, cwIndex1);
             if (swapHO) {
                 // Der replacer (emp2) verliert durch die Übernahme der Spätschicht eventuell HO-Tage
-                // Der replaced (emp1) kann eventuell die HO-Tage des replacers (emp2) übernehmen -> freeSlots
+                // Der replaced (emp1) kann eventuell die HO-Tage des replacers (emp2) übernehmen → freeSlots
                 // Der Rückgabewert von swapHomeOfficeDays wird ignoriert, da er hier keinen Aussagewert hat
-                swapHomeOfficeDays(emp1, emp2, cwIndex1, getFreeHOSlotsInWeek(cwIndex1));
+                swapHomeOfficeDays(emp1, emp2, cwIndex1, ShiftPolicy.INSTANCE.getWeeklyHoCreditsPerEmployee());
             }
             // Im REPLACE-Modus werden keine HO-Tage von replaced (emp1) storniert. Die Anzahl der stornierten
             // HO-Tage beträgt daher immer 0
@@ -246,15 +245,12 @@ public class ShiftSwap {
      *      Ausgangssituation:
      *      - Spätschicht von A in KW X
      *      - Spätschicht von B in KW Y
-     *
      *     Nach Tausch
      *     - Spätschicht A in KW Y
      *     - Spätschicht B in KW X
-     *
      * Der Austausch beginnt in den Kalenderwochen X bzw. Y. Je nach den jeweiligen Gegebenheiten (wochentag, auf den
      * der Beginn des Spätschichtzyklus fällt, Anzahl der Arbeitstage in der jeweiligen Kalenderwoche, Länge des
      * Spätschichtzyklus) kann sich ein Spätschichtzyklus über weitere Kalenderwochen erstrecken (X + 1..., Y +1...)
-     *
      * Die Methode wird nach Bearbeitung einer Kalenderwoche erneut rekursiv aufgerufen, bis alle Spätschichten des
      * Zyklus komplett neu zugewiesen wurden. Die Methode hält dabei die Anzahl der stornierten HomeOffice-Tage fest
      *
@@ -354,12 +350,8 @@ public class ShiftSwap {
                 // überschritten wird.
                 if (remainingWeeklyHoCredits == 0) {
                     logger.info("Alle HomeOffice-Optionen in KW {} erschöpft. Wechsel zur nächsten KW ...", cwIndex);
-                    // Keine HO-Tage mehr in der laufenden Woche zu verteilen, Kalenderwochen-Index erhöhen, um mit der
-                    // nächsten Kalenderwoche fortzufahren
-                    ++cwIndex;
-                    if (swapMode == OP_MODE.REPLACE) {
-                        maxHoDaysToDistribute = getFreeHOSlotsInWeek(cwIndex);
-                    }
+                    // Keine HO-Tage mehr in der laufenden Woche zu verteilen, Wochenschleife (innere Schleife)
+                    // abbrechen, um mit der nächsten Kalenderwoche fortzufahren
                     break;
                 }
                 ShiftPlanCopy.WorkDay workday = week[dayIndex];
@@ -383,16 +375,18 @@ public class ShiftSwap {
             }
             if (maxHoDaysToDistribute == 0) {
                 if (swapMode == OP_MODE.SWAP) {
-                    // Die beim Spätschichttausch stornierten Homeoffice - Tage sind alle neu verteilt worden, die#
+                    logger.debug("Keine weiteren HO-Tage zu verteilen - Maximum erreicht (SWAP)");
+                    // Die beim Spätschichttausch stornierten Homeoffice - Tage sind alle neu verteilt worden, die
                     // HO-Verteilung wird daher abgebrochen (nur bei SWAP-Mode)
                     return 0;
                 }
             }
-            ++cwIndex;
             if (swapMode == OP_MODE.REPLACE) {
                 // Maximal zu verteilende HO-Tage für die nächste Kalenderwoche bestimmen
-                maxHoDaysToDistribute = getFreeHOSlotsInWeek(cwIndex);
+                logger.debug("Vor Wechsel in nächste KW Neuzuteilung der max. HO-Tage / MA pro Woche (REPLACE) ");
+                maxHoDaysToDistribute = ShiftPolicy.INSTANCE.getWeeklyHoCreditsPerEmployee();
             }
+            ++cwIndex;
         }
         return maxHoDaysToDistribute;
     }
@@ -418,6 +412,7 @@ public class ShiftSwap {
     }
 
     int getIndexOfFirstLateShift(ShiftPlanCopy.WorkDay[] workDays, Employee employee) {
+        if (workDays == null) return -1;
         return IntStream.range(0, workDays.length)
                 .filter(index -> employee.equals(workDays[index].getLateshift()))
                 .findFirst()
@@ -425,6 +420,7 @@ public class ShiftSwap {
     }
 
     int openHoCreditsInWeek(ShiftPlanCopy.WorkDay[] week, Employee employee) {
+        assert week != null;
         // Die Methode zählt zunächst die Anzahl der HomeOffice-Tage, die dem employee in der Kalenderwoche week
         // zugeteilt sind.
         // Anschließend ergibt sich die Anzahl der noch möglichen weiteren HomeOffice-Tage in der gegebenen Woche aus der
@@ -440,6 +436,7 @@ public class ShiftSwap {
     }
 
     int getFreeHOSlotsInWeek(int cwIndex) {
+        assert cwIndex <= maxIndex;
         ShiftPlanCopy.WorkDay[] week = simpleCalendarWeeks.get(cwIndex);
         return Arrays.stream(week).mapToInt(ShiftPlanCopy.WorkDay::getFreeSlots).reduce(0, Integer::sum);
     }

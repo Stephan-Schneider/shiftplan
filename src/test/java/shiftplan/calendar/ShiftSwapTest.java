@@ -13,7 +13,10 @@ import shiftplan.data.ShiftPlanSerializer;
 import shiftplan.users.Employee;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -23,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ShiftSwapTest {
 
     private static final Logger logger = LogManager.getLogger(ShiftSwapTest.class);
+    private static final String LINE_SEP = "\n";
 
     private static ShiftPlanCopy copy;
     private ShiftSwap swapper;
@@ -229,5 +233,89 @@ class ShiftSwapTest {
                 Arguments.of(16, 1)
         );
     }
+
+
+    @ParameterizedTest
+    @MethodSource("getArgsForHOOptionCount")
+    void testAvailableHOOptions(Employee hoCandidate, Employee lsAfterSwap, int[] cwIndices) throws IOException {
+        logger.debug("Wochenanzahl: {}", cwIndices.length);
+        int hoOptionCount = 0;
+        StringBuilder hoReport = new StringBuilder();
+        Map<Integer, ShiftPlanCopy.WorkDay[]> calendar = swapper.getSimpleCalendarWeeks();
+
+        for (int cwIndex : cwIndices) {
+            hoReport.append("HO-Kandidat in KW ").append(cwIndex).append(": ").append(hoCandidate.getName()).append(LINE_SEP);
+            hoReport.append("Zur Spätschicht in vorgesehen in KW ").append(cwIndex).append(": ")
+                    .append(lsAfterSwap.getName()).append(LINE_SEP);
+
+            int hoOptionsPerWeek = 0;
+            ShiftPlanCopy.WorkDay[] week = calendar.get(cwIndex);
+            for (ShiftPlanCopy.WorkDay day : week) {
+                hoReport.append(day.getDayOfWeek().toString()).append(", ")
+                        .append(day.getDate().format(DateTimeFormatter.ISO_DATE)).append(LINE_SEP);
+
+                // HO-Kandidat ist bereits zum HO eingeteilt
+                boolean hoCandidateInHo = day.hasHoDay(hoCandidate);
+                // Der HO-Kandidat besetzt (vor dem Swao) am aktuellen Tag die Spätschicht
+                boolean hoCandidateIsCurrentLateshift = day.getLateshift() != null && day.getLateshift().equals(hoCandidate);
+                // Der aktuelle Tag ist ein Spätschichttag
+                boolean isLateShiftDay = day.isLateShift();
+                // Um die Situation nach einem Swap zu simulieren wird der LS-Kandidat an Spätschichttagen
+                // aus der HO-Liste des aktuellen Tages entfernt, sofern an diesem Tag ein Tausch mit dem HO-Kandidaten (der
+                // Spätschicht vor Tausch) stattfindet
+                boolean lsAfterSwitchRemoved = hoCandidateIsCurrentLateshift && day.removeEmployeeInHo(lsAfterSwap) > 0;
+                // Anzahl der freien HO-Slots am aktuellen Tag
+                int freeSlots = day.getFreeSlots();
+
+                hoReport.append("Anzahl freier HO-Plätze: ").append(freeSlots).append(LINE_SEP);
+                hoReport.append("Der aktuelle Arbeitstag ist ein Spätschichttag: ").append(isLateShiftDay ? "Ja" : "Nein").append(LINE_SEP);
+                hoReport.append("HO-Kandidat ").append(hoCandidate.getName()).append(" im HO: ")
+                        .append(hoCandidateInHo ? "Ja" : "Nein").append(LINE_SEP);
+                hoReport.append("HO-Kandidat ").append(hoCandidate.getName()).append(" hat Spätschicht: ")
+                        .append(hoCandidateIsCurrentLateshift ? "Ja" : "Nein").append(LINE_SEP);
+                hoReport.append("Der aktuelle Tag ist Spätschicht-Swap-Tag und der Spätschicht-Kandidat ")
+                        .append(lsAfterSwap.getName()).append(" wurde aus der HO-Liste des heutigen Tags entfernt: ")
+                        .append(lsAfterSwitchRemoved ? "Ja" : "Nein").append(LINE_SEP);
+
+                hoOptionsPerWeek += switch (freeSlots) {
+                    case 2 -> 1;
+                    case 1 -> {
+                        if (hoCandidateInHo) {
+                            // Wenn HO-Kandidat bereits HomeOffice an diesem Tag hat: 0
+                            yield 0;
+                        } else if (day.hasBackupConflictWith(hoCandidate)) {
+                            // Es besteht ein Backup-Konflikt - der Slot kann nicht vergeben werden
+                            yield 0;
+                        } else {
+                            yield 1;
+                        }
+                    }
+                    case 0 -> 0;
+                    default -> throw new IllegalStateException("Unexpected value: " + freeSlots);
+                };
+                hoReport.append("Anzahl HO-Optionen bis einschließlich ").append(day.getDayOfWeek().toString()).append(": ")
+                        .append(hoOptionsPerWeek).append(LINE_SEP);
+            }
+            hoReport.append("Anzahl von HO-Optionen für HO Kandidat ").append(hoCandidate.getName()).append(" in KW ")
+                    .append(cwIndex).append(": ").append(hoOptionsPerWeek).append(LINE_SEP).append(LINE_SEP);
+            hoOptionCount += hoOptionsPerWeek;
+        }
+        hoReport.append("Gesamtanzahl der HO-Optionen für MA ").append(hoCandidate.getName()).append(": ")
+                .append(hoOptionCount).append(LINE_SEP);
+
+        logger.info(hoReport.toString());
+        Files.writeString(Path.of("/home/stephan").resolve("test_result.txt"), hoReport.toString(),
+                StandardOpenOption.CREATE, StandardOpenOption.APPEND, StandardOpenOption.WRITE);
+
+
+    }
+
+    private static Stream<Arguments> getArgsForHOOptionCount() {
+        return Stream.of(
+                Arguments.of(copy.getEmployeeById("ID-6"), copy.getEmployeeById("ID-5"), new int[] {37,38}),
+                Arguments.of(copy.getEmployeeById("ID-5"), copy.getEmployeeById("ID-6"), new int[] {38, 39})
+        );
+    }
+
 
 }
