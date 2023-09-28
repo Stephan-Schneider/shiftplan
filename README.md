@@ -1,7 +1,7 @@
 # shiftplan
 
-**shiftplan** ist eine Anwendung zum Erstellen von Spätschicht- und Homeofficeplänen für eine kleine Abteilung mit 
-folgenden Anforderungen:
+**shiftplan** ist eine Anwendung zum Erstellen von Spätschicht- und Homeofficeplänen für eine kleinere Abteilung im 
+Bereich Spedition / Logistik mit folgenden Anforderungen:
 
 * Jeder Mitarbeiter hat Anspruch auf eine fest definierte Anzahl von Homeoffice-Tagen pro Woche bzw. pro Monat.
 * Alle oder eine Teilmenge der Mitarbeiter stehen in abwechselnder Reihenfolge für eine definierte Anzahl von 
@@ -26,8 +26,12 @@ Die Ausführung der Anwendung erfordert **Java SE 17**
 Bei Aufruf des Startskripts 'shiftplan.sh' werden folgende Aktionen ausgeführt:
 - Einlesen der Konfigurationsdatei 'shiftplan.xml'
 - Erstellung des Schichtplans (Spätschicht- und Homeofficeplan) nach Maßgabe der Konfiguration in 'shiftplan.xml'
+- Serialisierung des Schichtplans in die Datei **xml_serialized.xml**
 - Generierung eines PDFs, das den Schichtplan sowie eine Übersicht über die Zuweisung von Homeoffice-Tagen für jeden MA enthält
 - Optional: Versand des PDFs per Email an die in 'shiftplan.xml' hinterlegten Emailadressen
+- Nach Erstellung des Plans kann dieser jederzeit durch Angabe der entsprechenden Optionen geändert werden. Spätschichten
+  können nur 'en Block' neu vergeben werden (keine Änderung einzelner Tage). Auf Anfrage können bei einer Änderung der 
+  Spätschichten auch die Home-Office - Tage neu eingeteilt werden
 
 
 Aufruf der Hilfefunktion mit dem Parameter **-h**
@@ -43,10 +47,29 @@ Verzeichnis mit der Option **-t** anzugeben.
 temporäre Datei im Standardverzeichnis für Temp-Dateien des jeweiligen Betriebssystems angelegt.
 * **-c:** Der Pfad zur SMTP-Konfigurationsdatei - befindet sich im Installationsverzeichnis und kann ebenfalls verschoben
 werden, wobei der neue Pfad zur Konfigurationsdatei mit der Option **-c** anzugeben ist.
-* **-s** Diese Option ist anzugeben, wenn ein automatisierter Emailversand des erstellten Schichtplans durch die 
-Anwendung durchgeführt werden soll. Wenn diese Option aktiv ist, wird der Benutzer anschließend aufgefordert, das
-Passwort für den Absender-Account einzugeben. Das Passwort wird nicht in der Konfigurationsdatei oder an irgend einem
-anderen Ort innerhalb der Anwendung gespeichert.
+* **-s** Diese Option ist anzugeben, wenn ein automatisierter Emailversand des erstellten oder geänderten Schichtplans
+durch die Anwendung durchgeführt werden soll. Das Passwort für den E-Mail-Account wird nicht in einer Konfigurationsdatei 
+oder an irgendeinem anderen Ort innerhalb der Anwendung gespeichert. Bei lokalem Aufruf des Skripts sollte die Passwort-
+übergabe interaktiv erfolgen (siehe Parameter **-i**), bei entferntem Aufruf muss durch den SSH-Client der Parameter
+**-p** gesetzt werden
+* **-p** E-Mail-Passwort. Dieser Parameter ist für Passwortübergabe durch einen entfernten SSH-Client gedacht. Bei 
+lokalem Aufruf den interaktiven Modus benutzen!
+* **-i** Interaktive Passwortabfrage - die Übergabe des Email-Passworts sollte bei lokalem Aufruf des Programms interaktiv 
+erfolgen
+* **-v** Pfad zur XSD-Schemadatei zur Validierung der 'shiftplan_serialized.xml' - XML-Datei
+* **-d** Pfad zur XML-Datei, welche die Kopie des Schichtplans enthält (shiftplan_serialized.xml)
+* **-m** Parameter-String, der die für die Modifizierung eines Schichtplans benötigten Parameter enthält. Der
+Parameter-String hat folgendes Format: *"SWAP|REPLACE, true|false, employeeA, cwIndexA, employeeB, \[cwIndexB]"*. Der
+Boolean-Parameter gibt an, ob HO-Tage neu vergeben werden (true) oder nicht (false). Der 2. Kalenderwochenindex
+(cwIndexB) ist nur anzugeben, wenn Schichten getauscht werden (SWAP). Bei REPLACE (Ersetzen einer Spätschicht durch einen
+anderen MA) entfällt dieser Parameter
+* **-j** Die Änderungsparameter können auch in einer JSON-Datei hinterlegt werden (nur lokaler Aufruf). Falls sich die 
+Datei an einem anderen Ort als der Default-Location (Installationsverzeichnis) befindet, ist der Pfad hier anzugeben
+* **-q** Mit diesem Parameter kann die Erstellung einer Mitarbeiter-Liste aktiviert werden. Diese Liste wird dem SSH-Client
+übergeben, um dem Benutzer die aktuellen Schichten anzuzeigen. Die -q - Funktion benötigt die Schichtplankopie
+(shiftplan_serialized.xml) sowie die entsprechende Schema-Datei
+* **-l** Pfad zum Verzeichnis, das die Mitarbeiter-Liste enthält. Das voreingestellte Verzeichnis ist **/tmp**. Wirksam
+nur, wenn auch der Parameter **-q** angegeben wird
 
 ---
 ## mail_config.txt

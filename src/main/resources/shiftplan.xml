@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
+<!-- Attribut 'for': Jahr (vierstellig-), für welches der Plan erstellt wird (Pflichtattribut).
+     Optional: start-date / end-date. Format start- / end-date: yyyy-MM -->
 <shiftplan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
  xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2023" start-date="2023-09" end-date="2023-12">
 
+    <!-- Öffentliche Feiertage. Es sollten zumindest solche Feiertage angegeben werden, die auf einen Werktag fallen.
+         Das Attribut 'name' ist optional, Datumsangabe im 'date'-Attribut: ISO-Format (yyyy-MM-dd) -->
     <public-holidays>
         <holiday name="Neujahr" date="2023-01-01"/>
         <holiday name="Karfreitag" date="2023-04-07"/>
@@ -20,19 +24,23 @@
 
     <shift-policy>
         <late-shift-period>4</late-shift-period> <!-- Anzahl der fortlaufenden Spätschichttage -->
-        <no-lateshift-on>MONDAY</no-lateshift-on> <!-- Tage an denen keine Spätschicht vorgesehen ist (z.B. montags) -->
+        <!-- Tage an denen keine Spätschicht vorgesehen ist (z.B. montags), Wochentage von Montag bis Freitag auf Englisch in Großschrift, optional -->
+        <no-lateshift-on>MONDAY</no-lateshift-on>
         <!--<no-lateshift-on>TUESDAY</no-lateshift-on>-->
         <max-home-per-month>8</max-home-per-month> <!-- Maximale Anzahl von Homeoffice-Tagen pro Monat -->
         <ho-credits-per-employee>2</ho-credits-per-employee> <!-- Max. Anzahl von HO-Tagen pro Woche -->
         <max-ho-slots-per-day>2</max-ho-slots-per-day> <!-- Maximale Anzahl von MA's, die an einem Tag von zu Hause arbeiten-->
     </shift-policy>
 
+    <!-- Hinweis zur Konfiguration von Backups: Backups müssen reziprok erfasst werden. Wenn Mitarbeiter A einen
+         Mitarbeiter B als Backup einträgt, muss Mitarbeiter B wiederum den Mitarbeiter A als Backup aufführen;
+          andernfalls ist die Konfiguration unwirksam -->
     <employees>
         <employee id="ID-1">
             <name>Greta</name>
             <lastname>Thünberg</lastname>
-            <participation>HO_LS</participation>
-            <color>#336699</color>
+            <participation>HO_LS</participation> <!-- HO: nur Home-Office, LS: nur Spätschicht, HO_LS: Home-Office und Spätschicht -->
+            <color>#336699</color> <!-- Hervorhebungsfarbe des MA's im Plan -->
             <email>stephanschneider34@hotmail.com</email>
             <backups>
                 <backup idref="ID-2"/>
