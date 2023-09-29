@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+    <!-- Liste der Wochentage -->
+    <xs:simpleType name="weekdays">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="MONDAY"/>
+            <xs:enumeration value="TUESDAY"/>
+            <xs:enumeration value="WEDNESDAY"/>
+            <xs:enumeration value="THURSDAY"/>
+            <xs:enumeration value="FRIDAY"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <!-- Liste der Partizipations-Schemata
+            HO: nur Homeoffice
+            LS: nur Spätschicht
+            HO_LS: MA nimmt an Homeoffice UND Spätschicht teil
+    -->
+    <xs:simpleType name="participationType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="HO"/>
+            <xs:enumeration value="LS"/>
+            <xs:enumeration value="HO_LS"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <!-- Datentyp Email-Adresse -->
+    <xs:simpleType name="emailAddress">
+        <xs:restriction base="xs:string">
+            <xs:pattern value=".+@[^.].*\.[a-z]{2,}"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:element name="shiftplan">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="creation-params">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="late-shift-period" type="xs:int" />
+                            <xs:element name="max-home-per-month" type="xs:int" />
+                            <xs:element name="ho-credits-per-employee" type="xs:int" />
+                            <xs:element name="max-ho-slots-per-day" type="xs:int" />
+                            <xs:element name="no-lateshift-on" type="weekdays" maxOccurs="5"/>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="employees">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="employee" maxOccurs="unbounded">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="name" type="xs:string" />
+                                        <xs:element name="lastname" type="xs:string" />
+                                        <xs:element name="participation" type="participationType" />
+                                        <xs:element name="color" minOccurs="0" type="xs:string" />
+                                        <xs:element name="email" minOccurs="0" type="emailAddress" />
+                                        <xs:element name="backups" minOccurs="0">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element name="backup" minOccurs="1" maxOccurs="unbounded">
+                                                        <xs:complexType>
+                                                            <xs:attribute name="idref" use="required" type="xs:IDREF" />
+                                                        </xs:complexType>
+                                                    </xs:element>
+                                                </xs:sequence>
+                                            </xs:complexType>
+                                        </xs:element>
+                                    </xs:sequence>
+                                    <xs:attribute name="id" use="required" type="xs:ID" />
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="calendar-weeks">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="calendar-week" maxOccurs="unbounded">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="day" maxOccurs="7">
+                                            <xs:complexType>
+                                                <xs:all>
+                                                    <xs:element name="ho-office" minOccurs="0">
+                                                        <xs:complexType>
+                                                            <xs:sequence>
+                                                                <xs:element name="employee" minOccurs="1" maxOccurs="unbounded" >
+                                                                    <xs:complexType>
+                                                                        <xs:attribute name="idref" use="required"  type="xs:IDREF" />
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                            </xs:sequence>
+                                                        </xs:complexType>
+                                                    </xs:element>
+                                                    <xs:element name="late-shift" minOccurs="0">
+                                                        <xs:complexType>
+                                                            <xs:sequence>
+                                                                <xs:element name="employee" minOccurs="1">
+                                                                    <xs:complexType>
+                                                                        <xs:attribute name="idref" use="required" type="xs:IDREF" />
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                            </xs:sequence>
+                                                        </xs:complexType>
+                                                    </xs:element>
+                                                </xs:all>
+                                                <xs:attribute name="name" use="required" type="weekdays" />
+                                                <xs:attribute name="date" type="xs:date" use="required" />
+                                                <xs:attribute name="is-lateshift" type="xs:boolean" use="required" />
+                                            </xs:complexType>
+                                        </xs:element>
+                                    </xs:sequence>
+                                    <xs:attribute name="index" type="xs:integer" use="required" />
+                                    <xs:attribute name="from" type="xs:date" use="required" />
+                                    <xs:attribute name="to" type="xs:date" use="required" />
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+            <xs:attribute name="for" type="xs:gYear" use="required" />
+            <xs:attribute name="start" type="xs:gYearMonth" use="required" />
+            <xs:attribute name="end" type="xs:gYearMonth" use="required" />
+        </xs:complexType>
+    </xs:element>
+</xs:schema>

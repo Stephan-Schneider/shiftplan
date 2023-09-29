@@ -30,7 +30,9 @@ xmlPath=${install_dir}/XML
 # Pfad zum Template-Verzeichnis - enthält das FTL-Template 'shiftplan.ftl'
 templatePath=${install_dir}/Template
 
-# Pfad zum Verzeichnis, in dem die generierte Schichtplan-Datei (temporär) als PDF gespeichert wird
+# Pfad zum Verzeichnis, in dem die generierte Schichtplan-Datei (temporär) als PDF gespeichert wird.
+# Wenn dieser Parameter nicht angegeben wird, speichert die Anwendung den  generierte Schichtplan im voreingestellten
+# Verzeichnis für temporäre Dateien des jeweiligen Betriebssystems.
 outDir=""
 
 # Pfad zur SMTP-Konfigurationsdatei (enthält SMTP Parameter wie den SMTP-Server des Email-Providers)
@@ -51,7 +53,7 @@ smtpPassword=""
 interactive=false
 
 # Pfad zur XML-Schema - Datei, die zur Validierung von shiftplan_serialized.xml verwendet wird
-shiftPlanCopySchemaPath=/home/stephan/Projekte/Web
+shiftPlanCopySchemaPath=${install_dir}/XML
 
 # Pfad zur Kopie eines Schichtplans in XML-Format - die XML-Datei hat immer den Namen 'shiftplan_serialized.xml'
 shiftPlanCopyXMLFile=/home/stephan/Projekte/Web/shiftplan_serialized.xml
@@ -157,10 +159,10 @@ if [ "$sendEmail" = true ] && [ "$interactive" = true ]; then
 fi
 
 if [ "$sendEmail" = true ]; then
-  opt/java/jdk-17.0.2+8/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
+  /opt/java/jdk-17.0.2+8/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
   -o "$outDir" -c "$configPath" -p "$smtpPassword" -s -v "$shiftPlanCopySchemaPath" -d "$shiftPlanCopyXMLFile" \
   -m "$swapData" -j "$swapDataJSON"
 else
-  opt/java/jdk-17.0.2+8/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
+  /opt/java/jdk-17.0.2+8/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
   -o "$outDir" -v "$shiftPlanCopySchemaPath" -d "$shiftPlanCopyXMLFile" -m "$swapData" -j "$swapDataJSON"
 fi

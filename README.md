@@ -26,7 +26,7 @@ Die Ausführung der Anwendung erfordert **Java SE 17**
 Bei Aufruf des Startskripts 'shiftplan.sh' werden folgende Aktionen ausgeführt:
 - Einlesen der Konfigurationsdatei 'shiftplan.xml'
 - Erstellung des Schichtplans (Spätschicht- und Homeofficeplan) nach Maßgabe der Konfiguration in 'shiftplan.xml'
-- Serialisierung des Schichtplans in die Datei **xml_serialized.xml**
+- Serialisierung des Schichtplans in die Datei **shiftplan_serialized.xml**
 - Generierung eines PDFs, das den Schichtplan sowie eine Übersicht über die Zuweisung von Homeoffice-Tagen für jeden MA enthält
 - Optional: Versand des PDFs per Email an die in 'shiftplan.xml' hinterlegten Emailadressen
 - Nach Erstellung des Plans kann dieser jederzeit durch Angabe der entsprechenden Optionen geändert werden. Spätschichten
@@ -70,6 +70,28 @@ Datei an einem anderen Ort als der Default-Location (Installationsverzeichnis) b
 (shiftplan_serialized.xml) sowie die entsprechende Schema-Datei
 * **-l** Pfad zum Verzeichnis, das die Mitarbeiter-Liste enthält. Das voreingestellte Verzeichnis ist **/tmp**. Wirksam
 nur, wenn auch der Parameter **-q** angegeben wird
+
+#### Aufruf-Beispiele
+Aufruf des Skripts immer aus dem Installationsverzeichnis der Anwendung:
+````bash
+cd /path/to/shiftplan_installdir
+````
+Anschließend:
+* Erstellen eines neuen Schichtplans:
+```bash
+# Erstellen eines Schichtplans, lokaler Aufruf, Default-Locations, Email-Versand
+# -o nur angeben wenn die generierte PDF-Datei in einem anderen als dem Default-Verzeichnis (/tmp) gespeichert werden soll
+# -d kann auch in shiftplan.sh definiert werden
+./shiftplan.sh -o /home/stephan -d /home/$user/../shiftplan_serialized.xml -s -i -m "CREATE"
+```
+
+* Ändern eines bestehenden Schichtplans:
+```bash
+# Ändern eines Schichtplans, lokaler Aufruf, Default-Locations, Email-Versand
+# -o nur angeben wenn die generierte PDF-Datei in einem anderen als dem Default-Verzeichnis (/tmp) gespeichert werden soll
+# -d kann auch in shiftplan.sh definiert werden
+./shiftplan.sh -m "SWAP,true,ID-1,35,ID-4,37" -o /home/$user -d /home/$user/../shiftplan_serialized.xml -s -i
+```
 
 ---
 ## mail_config.txt
