@@ -83,11 +83,22 @@ public class StaffList {
     ShiftCalendar.CalendarInfo getCurrentCalendarWeek() {
         LocalDate startDate = LocalDate.now();
         int yearAsPerShiftplan = shiftPlanCopy.getForYear();
-        if (startDate.getYear() != yearAsPerShiftplan) {
-            throw new ShiftPlanSwapException("Es wird ein ungültiger SchichtPlan verwendet!");
+        if (startDate.getYear() > yearAsPerShiftplan) {
+            // Der Schichtplan liegt in der Vergangenheit - die Änderung eines nicht mehr verwendeten, veralteten
+            // Plans ist nicht sinnvoll
+            throw new ShiftPlanSwapException("Es wird ein veralteter SchichtPlan verwendet!");
         }
+
         ShiftCalendar calendar = new ShiftCalendar(yearAsPerShiftplan);
         LocalDate firstCalendarWeekStartDate = calendar.getFirstCalendarWeekStart(yearAsPerShiftplan);
+        if (startDate.getYear() < yearAsPerShiftplan) {
+            // Die StaffList wird für einen Pan in einem nachfolgenden Jahr erstellt.
+            // Im Normalfall werden StaffLists / Änderungen des Schichtplans für einen laufenden Schichtplan erstellt -
+            // die Änderung eines existierenden, zukünftigen Plans ist jedoch auch legitim.
+            // Die Erstellung der StaffList beginnt in diesem Fall am Anfang des künftigen Jahres.
+            return new ShiftCalendar.CalendarInfo(1, firstCalendarWeekStartDate);
+        }
+        // Ein laufender Plan wird geändert. Erstellung der StaffList ausgehend vom aktuellen Datum.
         return calendar.getCalendarWeekOfDate(firstCalendarWeekStartDate, startDate, true);
     }
 

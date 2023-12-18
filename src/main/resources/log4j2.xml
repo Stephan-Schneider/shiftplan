@@ -1,17 +1,47 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<Configuration xmlns="http://logging.apache.org/log4j/2.0/config" status="DEBUG">
+<Configuration status="DEBUG">
     <Properties>
         <Property name="LOG_PATTERN">%d{DEFAULT} %c{2} %-5level: %msg%n</Property>
-        <Property name="APP_LOG_ROOT">${sys:user.home}/logs</Property>
+        <Property name="APP_LOG_ROOT">/var/log/shiftplan_log</Property>
     </Properties>
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="${LOG_PATTERN}" />
         </Console>
+        <RollingFile name="AppLogger" fileName="${APP_LOG_ROOT}/shiftplan.log"
+                     filePattern="${APP_LOG_ROOT}/shiftplan-%d{yyyy-MM-dd}.log">
+            <PatternLayout pattern="${LOG_PATTERN}" />
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true" />
+                <SizeBasedTriggeringPolicy size="10MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="10">
+                <Delete basePath="${APP_LOG_ROOT}" maxDepth="10">
+                    <IfLastModified age="30d" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+        <RollingFile name="RootLogger" fileName="${APP_LOG_ROOT}/root.log"
+                     filePattern="${APP_LOG_ROOT}/root-%d{yyyy-MM-dd}.log">
+            <PatternLayout pattern="${LOG_PATTERN}" />
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true" />
+                <SizeBasedTriggeringPolicy size="10MB" />
+            </Policies>
+            <DefaultRolloverStrategy max="10">
+                <Delete basePath="${APP_LOG_ROOT}" maxDepth="10">
+                    <IfLastModified age="30d" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
     </Appenders>
     <Loggers>
-        <Root level="DEBUG">
+        <Logger name="shiftplan" level="TRACE" additivity="false">
+            <AppenderRef ref="AppLogger" />
+        </Logger>
+        <Root level="TRACE">
             <AppenderRef ref="Console" />
+            <AppenderRef ref="RootLogger" />
         </Root>
     </Loggers>
 </Configuration>
