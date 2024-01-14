@@ -17,6 +17,8 @@ import shiftplan.publish.EmailDispatch;
 import shiftplan.users.Employee;
 import shiftplan.users.HomeOfficeRecord;
 import shiftplan.users.StaffList;
+import shiftplan.web.ConfigBundle;
+import shiftplan.web.ShiftplanServer;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -166,7 +168,7 @@ public class ShiftPlanRunner {
 
     }
 
-    Path createPDF(String templateDir, Map<String, Object> dataModel, String outDir)
+    public Path createPDF(String templateDir, Map<String, Object> dataModel, String outDir)
             throws IOException, TemplateException {
         TemplateProcessor processor = TemplateProcessor.INSTANCE;
         if (templateDir == null || templateDir.isEmpty()) {
@@ -344,6 +346,20 @@ public class ShiftPlanRunner {
                 .argName("staffListDirPath")
                 .build();
 
+        Option serverOption = Option
+                .builder("S") // start web server
+                .desc("Startet einen Webserver für den Remote-Zugriff zum Ändern eines Schichtplans")
+                .hasArg(false)
+                .argName("startServer")
+                .build();
+
+        Option portOption = Option
+                .builder("P")
+                .desc("Startet den Webserver an Port <port>")
+                .hasArg()
+                .argName("serverPort")
+                .build();
+
 
 
         Option helpOption = new Option("h", "help", false, "Diese Nachricht drucken");
@@ -362,6 +378,8 @@ public class ShiftPlanRunner {
         options.addOption(swapParamJSONOption);
         options.addOption(queryStaffListOption);
         options.addOption(staffListPathOption);
+        options.addOption(serverOption);
+        options.addOption(portOption);
 
         return options;
     }
@@ -393,8 +411,10 @@ public class ShiftPlanRunner {
         // -q, --query: Erstellung einer Mitarbeiter-Liste, enthaltend die MA-Id, Vorname + Name ('DisplayName)
         //           und eine Liste der Spätschicht - Kalenderwochenindizes. Die Liste wird in einer Datei gespeichert
         //           und vom Shiftplan Remote-Tool abgefragt, um Auswahllisten in der GUI mit den MA-Daten zu befüllen
-        // -l, --list: Pfad zur Mitarbeiter-Liste - wird nur berücksichtigt wenn auch die Option -q (--query)
+        // -l, --list: Pfad zur Mitarbeiter-Liste - wird nur berücksichtigt, wenn auch die Option -q (--query)
         //           angegeben wird
+        // -S:       Startet einen Webserver für den Remote-Zugriff zum Ändern eines Schichtplans
+        // -P:       Startet den Webserver an Port <port>
 
         // Nicht auskommentieren - keine Ausgabe des Passworts in Klartext !!
         // logger.trace("ShiftplanRunner gestartet mit den Argumenten: {}", Arrays.toString(args));
@@ -424,6 +444,9 @@ public class ShiftPlanRunner {
         Path swapParamsFile = null;
         boolean query = false;
         String staffListDir = null;
+
+        boolean startServer = false;
+        int port = 8080;
 
         Objects.requireNonNull(cmd, "Keine Kommandozeile generiert!");
 
@@ -478,6 +501,20 @@ public class ShiftPlanRunner {
             staffListDir = cmd.getOptionValue("l");
         }
 
+        if (cmd.hasOption("S")) {
+            startServer = true;
+        }
+
+        String val = "";
+        if (cmd.hasOption("P")) {
+            try {
+                val = cmd.getOptionValue("P");
+                port = Integer.parseInt(val, 10);
+            } catch (NumberFormatException ex) {
+                logger.warn("Ungültiger Wert für Port: {}. Der Default-Wert 8080 wird verwendet.", val);
+            }
+        }
+
         logger.info("shiftplan mit folgenden Argumenten aufgerufen:");
         logger.info("xmlPath: {}", xmlPath);
         logger.info("templatePath: {}", templatePath);
@@ -490,6 +527,21 @@ public class ShiftPlanRunner {
         logger.info("Per swap_parameter.json übergebene Swap-Parameter: {}", swapParamsFile);
         logger.info("query: {}", query);
         logger.info("Pfad zum Mitarbeiter-Verzeichnis: {}", staffListDir);
+        logger.info("Anwendung läuft im Web-Server - Modus: {}", startServer);
+        if (startServer) {
+            logger.info("Web-Server wird gestartet an Port: {}", port);
+        }
+
+        if (startServer) {
+            new ConfigBundle.ConfigBuilder(
+                    shiftPlanCopyXMLFile, shiftPlanCopyXSDDir)
+                    .templateDir(templatePath)
+                    .pdfOutDir(outDir)
+                    .smtpConfigPath(configPath)
+                    .build();
+            ShiftplanServer.createServer(port);
+            return;
+        }
 
         ShiftPlanRunner shiftPlanRunner = new ShiftPlanRunner();
         if (query) {

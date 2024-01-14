@@ -8,6 +8,8 @@ module shiftplan {
     requires commons.cli;
     requires commons.email;
     requires com.fasterxml.jackson.databind;
+    requires undertow.core;
+    requires jdk.unsupported; // Erforderlich, um undertow zum Laufen zu bringen
     exports shiftplan.users to freemarker;
     exports shiftplan.calendar to freemarker;
     opens shiftplan.calendar to com.fasterxml.jackson.databind;

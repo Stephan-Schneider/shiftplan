@@ -17,8 +17,28 @@ public class StaffList {
     public record StaffData(String id, String displayName, TreeSet<Integer> cwIndices) {}
 
     private final ShiftPlanCopy shiftPlanCopy;
-    private final Path staffListDir;
+    private Path staffListDir;
 
+    /**
+     * Erstellt eine StaffList-Instanz ohne die Möglichkeit, die generierte Liste in eine Datei zu schreiben.
+     * (Verwendung im Http-Modus)
+     *
+     * @param copy Kopie des Schichtplans.
+     * @throws NullPointerException wenn <code>copy</code> null ist.
+     *
+     */
+    public StaffList(ShiftPlanCopy copy) {
+        this.shiftPlanCopy = Objects.requireNonNull(copy, "Keine Schichtplan-Kopie!");
+    }
+
+    /**
+     * Erstellt eine StaffList-Instanz mit der Möglichkeit, die generierte Liste in eine Datei zu schreiben.
+     * (Verwendung im SSH-Modus)
+     *
+     * @param copy Kopie des Schichtplans
+     * @param pathToStaffListDir Verzeichnis, in welches die StaffList-Datei (zwischen-) gespeichert wird.
+     * @throws NullPointerException wenn <code>copy</code> null ist.
+     */
     public StaffList(ShiftPlanCopy copy, String pathToStaffListDir) {
         this.shiftPlanCopy = Objects.requireNonNull(copy, "Keine Schichtplan-Kopie!");
         Objects.requireNonNull(pathToStaffListDir, "Kein PFad zur Mitarbeiter-Liste");

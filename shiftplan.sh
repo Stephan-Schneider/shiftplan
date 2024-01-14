@@ -56,7 +56,7 @@ interactive=false
 shiftPlanCopySchemaPath=${install_dir}/XML
 
 # Pfad zur Kopie eines Schichtplans in XML-Format - die XML-Datei hat immer den Namen 'shiftplan_serialized.xml'
-shiftPlanCopyXMLFile=/home/stephan/Projekte/Web/shiftplan_serialized.xml
+shiftPlanCopyXMLFile=${install_dir}/generated_data/shiftplan_serialized.xml
 
 # Die für die Modifizierung eines Schichtplans (SWAP, REPLACE, CREATE) erforderlichen OP-Parameter als CLI-Args
 # Der Parameter-String muss die einzelnen Parameter in einer festgelegten Reihenfolge enthalten:
@@ -79,11 +79,18 @@ query=false
 # Das Default-Verzeichnis ist /tmp
 staffListDir=/tmp
 
+# Wird <server> auf den Wert <true> gesetzt, startet die Anwendung einen Webserver, der die Anfragen zum Ändern des
+# Schichtplans handelt. Ist der Wert für <server> <false>, wird der Standardverbindungstyp SSH verwendet
+server=false
+
+# Port, an welchen der Server gestartet wird.
+port=8080
+
 # shellcheck disable=SC1009
 help() {
   echo "Skript zum Starten der shiftplan - App"
   echo
-  echo "Aufruf: shiftplan.sh [-h|-x|-t|-o|-c|-s|-p|-i|-v|-d|-m|-j|-q|-l]"
+  echo "Aufruf: shiftplan.sh [-h|-x|-t|-o|-c|-s|-p|-i|-v|-d|-m|-j|-q|-l|-S|-P]"
   echo "Optionen:"
   echo "-h  Druckt diese Hilfenachricht"
   echo "-x  Pfad zum XML-Ordner. Enthält shiftplan.xml und shiftplan.xsd. Obligatorisch, wenn der Ordner außerhalb des Installationsverzeichnis liegt"
@@ -99,9 +106,12 @@ help() {
   echo "-j  Pfad zur JSON-Datei, welche die zur Modifikation eines Schichtplans benötigten Parameter enthält"
   echo "-q  query-Option: Nur angeben wenn eine Mitarbeiter-Liste erstellt werden soll"
   echo "-l  Pfad zum Verzeichnis, das die Datei mit der Mitarbeiter-Liste enthält. Wird nur erstellt, wenn auch die Option -q (query) angegeben wird"
+  echo "-S  Startet einen Webserver für den Remote-Zugriff zum ändern eines existierenden Schichtplan. Ohne den Parameter '-S' läuft die Verbindung über SSH"
+  echo "-P  Port, an welchem der Webserver gestartet wird"
+
 }
 
-while getopts "hx:t:o:c:sp:iv:d:m:j:ql:" option 2>/dev/null; do
+while getopts "hx:t:o:c:sp:iv:d:m:j:ql:SP:" option 2>/dev/null; do
   case $option in
   h) # Hilfe-Text ausgeben
     help
@@ -132,6 +142,10 @@ while getopts "hx:t:o:c:sp:iv:d:m:j:ql:" option 2>/dev/null; do
     query=true;;
   l) # Pfad zum Verzeichnis der Mitarbeiter-Liste
     staffListDir=$OPTARG;;
+  S) # Starten des Web-Servers
+    server=true;;
+  P) # Http-Port
+    port=$OPTARG;;
   *) # Ungültige Option
     echo "Ungültige Option - Skript wird beendet"
     exit ;;
@@ -147,7 +161,7 @@ echo "Starten der shiftplan - Anwendung aus Verzeichnis ${install_dir} ..."
 ### als die intendierte Version des JDK's gestartet wird und Versions-Konflikte auftreten.
 
 if [ "$query" = true ]; then
-    /opt/java/jdk-17.0.2+8/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -v "$shiftPlanCopySchemaPath" \
+    /opt/java/jdk-21.0.1+12/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -v "$shiftPlanCopySchemaPath" \
     -d "$shiftPlanCopyXMLFile" -q -l "$staffListDir"
     exit 0 # Skript stoppen - keine weitere Aktion erforderlich oder sinnvoll
 fi
@@ -158,11 +172,15 @@ if [ "$sendEmail" = true ] && [ "$interactive" = true ]; then
     # echo "$smtpPassword"
 fi
 
-if [ "$sendEmail" = true ]; then
-  /opt/java/jdk-17.0.2+8/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
+if [ "$server" = true ]; then
+    /opt/java/jdk-21.0.1+12/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner \
+    -S -P "$port" -x "$xmlPath" -t "$templatePath" -o "$outDir" -c "$configPath" -v "$shiftPlanCopySchemaPath" \
+    -d "$shiftPlanCopyXMLFile"
+elif [ "$sendEmail" = true ]; then
+  /opt/java/jdk-21.0.1+12/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
   -o "$outDir" -c "$configPath" -p "$smtpPassword" -s -v "$shiftPlanCopySchemaPath" -d "$shiftPlanCopyXMLFile" \
   -m "$swapData" -j "$swapDataJSON"
 else
-  /opt/java/jdk-17.0.2+8/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
+  /opt/java/jdk-21.0.1+12/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
   -o "$outDir" -v "$shiftPlanCopySchemaPath" -d "$shiftPlanCopyXMLFile" -m "$swapData" -j "$swapDataJSON"
 fi
