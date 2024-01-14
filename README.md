@@ -32,6 +32,14 @@ Bei Aufruf des Startskripts 'shiftplan.sh' werden folgende Aktionen ausgeführt:
 - Nach Erstellung des Plans kann dieser jederzeit durch Angabe der entsprechenden Optionen geändert werden. Spätschichten
   können nur 'en Block' neu vergeben werden (keine Änderung einzelner Tage). Auf Anfrage können bei einer Änderung der 
   Spätschichten auch die Home-Office - Tage neu eingeteilt werden
+- Die Erstellung eines neuen Schichtplans kann ausschließlich durch den lokalen Aufruf von 'shiftplan.sh', wie im Folgenden 
+  beschrieben, durchgeführt werden.
+- Änderungen eines bestehenden Schichtplans können entweder lokal oder durch eine mobile Android-App per Fernverbindung 
+  durchgeführt werden. Es stehen hierzu die Protokolle **SSH** oder **HTTP** zur Auswahl. 
+- Bei einem Aufruf der Anwendung via **SSH** wird die Änderungsanforderungen analog eines lokalen Aufrufs gestartet. 
+  Es sind dieselben Parameter zu übergeben, die auch bei einem lokalen Aufruf erforderlich sind.
+- Bei Verwendung des HTTP-Protokolls wird mit 'shiftplan.sh' ein Webserver gestartet (siehe Aufruf-Beispiele). Die 
+  eigentliche Änderung des Schichtplans erfolgt dann über die entsprechenden HTTP-Requests.
 
 
 Aufruf der Hilfefunktion mit dem Parameter **-h**
@@ -70,6 +78,9 @@ Datei an einem anderen Ort als der Default-Location (Installationsverzeichnis) b
 (shiftplan_serialized.xml) sowie die entsprechende Schema-Datei
 * **-l** Pfad zum Verzeichnis, das die Mitarbeiter-Liste enthält. Das voreingestellte Verzeichnis ist **/tmp**. Wirksam
 nur, wenn auch der Parameter **-q** angegeben wird
+* **-S** Mit dieser Option wird ein Webserver gestartet, über welchen Änderungsanforderungen via Fernaufruf durch einen 
+mobilen Android-Client durchgeführt werden können
+* **-P** Port, an dem der Server gestartet wird. Der Default-Port ist _8080_
 
 #### Aufruf-Beispiele
 Aufruf des Skripts immer aus dem Installationsverzeichnis der Anwendung:
@@ -91,6 +102,13 @@ Anschließend:
 # -o nur angeben wenn die generierte PDF-Datei in einem anderen als dem Default-Verzeichnis (/tmp) gespeichert werden soll
 # -d kann auch in shiftplan.sh definiert werden
 ./shiftplan.sh -m "SWAP,true,ID-1,35,ID-4,37" -o /home/$user -d /home/$user/../shiftplan_serialized.xml -s -i
+```
+
+* Starten des Webservers
+```bash
+# Starten des Webservers, Aufruf lokal oder via SSH, Default-Locations
+# Die Übergabe der Änderungsparameter (SWAP,ID_MA1 etc.) und das Triggern des Emailversands erfolgen über die HTTP-Rest URLs
+./shiftplan.sh -S -P 8080 -d /home/$user/.../shiftplan_serialized.xml -v /home/$user/.../shiftplan_serialized.xsd
 ```
 
 ---
