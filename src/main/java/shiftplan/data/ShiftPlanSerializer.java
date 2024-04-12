@@ -143,6 +143,18 @@ public class ShiftPlanSerializer {
         maxHoSlotsPerDay.addContent(new Comment("Maximale Anzahl von MA's, die an einem Tag von zu Hause arbeiten"));
         creationParams.addContent(maxHoSlotsPerDay);
 
+        Element maxSuccessiveHODays = new Element("max-successive-ho-days");
+        maxSuccessiveHODays.setText(String.valueOf(policy.getMaxSuccessiveHODays()));
+        maxSuccessiveHODays.addContent(new Comment("Maximale Anzahl aufeinanderfolgender HO-Tage eines MA's"));
+        creationParams.addContent(maxSuccessiveHODays);
+
+        Element minDistanceBetweenHOBlocks = new Element("min-distance-between-ho-blocks");
+        minDistanceBetweenHOBlocks.setText(String.valueOf(policy.getMinDistanceBetweenHOBlocks()));
+        minDistanceBetweenHOBlocks.addContent(new Comment(
+                "Mindestanzahl von Tagen, für die ein MA nach einer festgelegten Anzahl von aufeinanderfolgenden HO-Tagen für\n" +
+                        "eine weitere HO-Einteilung gesperrt ist"));
+        creationParams.addContent(minDistanceBetweenHOBlocks);
+
         policy.getNoLateShiftOn().forEach(dayOfWeek -> {
             Element noLateShiftOn = new Element("no-lateshift-on");
             noLateShiftOn.setText(dayOfWeek.getDisplayName(TextStyle.FULL, Locale.US).toUpperCase(Locale.ROOT));

@@ -184,6 +184,9 @@ public class ShiftPlanner {
                 // umgedreht
                 Collections.reverse(tmpList);
                 tmpList.forEach(employeeStack::push);
+
+                // Home-Office-Sperre für die nicht eingeteilten MA's zurücksetzen / reduzieren
+                shift.discountBlocks(employees);
             }
         }
     }
@@ -214,6 +217,9 @@ public class ShiftPlanner {
                 if (!tmpList.contains(top)) tmpList.add(top);
                 fillHoSlot(employeeStack, tmpList, shift);
             } else if (shift.isMaxPerMonthOverrun(top)) {
+                fillHoSlot(employeeStack, tmpList, shift);
+            } else if (top.isBlocked()) {
+                if (!tmpList.contains(top)) tmpList.add(top);
                 fillHoSlot(employeeStack, tmpList, shift);
             } else {
                 shift.addEmployeeInHo(top);

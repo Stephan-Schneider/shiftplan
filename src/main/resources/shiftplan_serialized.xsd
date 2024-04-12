@@ -43,6 +43,8 @@
                             <xs:element name="ho-credits-per-employee" type="xs:int" />
                             <xs:element name="max-ho-slots-per-day" type="xs:int" />
                             <xs:element name="no-lateshift-on" type="weekdays" maxOccurs="5"/>
+                            <xs:element name="max-successive-ho-days" type="xs:int"/>
+                            <xs:element name="min-distance-between-ho-blocks" type="xs:int"/>
                         </xs:sequence>
                     </xs:complexType>
                 </xs:element>

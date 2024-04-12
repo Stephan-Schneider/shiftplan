@@ -2,6 +2,7 @@ package shiftplan.users;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import shiftplan.calendar.ShiftPolicy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,15 @@ public class Employee implements Comparable<Employee> {
     // Die Anzahl der HO-Tage pro Woche. Am Anfang einer Kalenderwoche wird die maximale Anzahl von HO-Tagen gesetzt,
     // bei jeder Vergabe von HO-Tagen wird das HO-Konto des MA's um 1 reduziert
     private int homeOfficeBalance;
+
+    // Trackt die Anzahl der aufeinander folgenden HO-Tage. Die maximale Anzahl erlaubter aufeinanderfolgender
+    // HO-Tage ist durch <ShiftPolicy.maxSuccessiveHODays> festgelegt
+    private int successiveHODaysCounter = 0;
+
+    // Trackt die Anzahl der Tage, für welche ein Mitarbeiter/in für die Einteilung ins HO geblockt ist. Die Mindest-Anzahl
+    // von Tagen, die ein Mitarbeiter nach einer festgelegten Anzahl von aufeinanderfolgenden HO-Tagen geblockt
+    // ist, wird durch <ShiftPolicy.minDistanceBetweenHOBlocks> festgelegt
+    private int blockedDaysCounter = 0;
 
     // Liste der Backups - diese Liste konstituiert eine Restriktion bei der Vergabe von HO-Tagen: Backups und dieser
     // MA schließen sich bei der HO-Vergabe an einem bestimmten Datum gegenseitig aus
@@ -118,6 +128,31 @@ public class Employee implements Comparable<Employee> {
 
     public boolean hasDaysLeft() {
         return homeOfficeBalance > 0;
+    }
+
+    public void increaseSuccessiveHODaysCounter() {
+        ++successiveHODaysCounter;
+    }
+
+    public void resetSuccessiveHODaysCounter() {
+        successiveHODaysCounter = 0;
+    }
+
+    public boolean isBlocked() {
+        if (successiveHODaysCounter == ShiftPolicy.INSTANCE.getMaxSuccessiveHODays()) {
+            blockedDaysCounter = ShiftPolicy.INSTANCE.getMinDistanceBetweenHOBlocks();
+        }
+
+        if (blockedDaysCounter > 0) {
+            return true;
+        }
+        return false;
+    }
+
+    public void discountBlock() {
+        if (blockedDaysCounter > 0) {
+            --blockedDaysCounter;
+        }
     }
 
     public void swapBalance() {

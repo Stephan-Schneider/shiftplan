@@ -113,6 +113,9 @@ public class DocumentParser {
         builder.setMaxHoDaysPerMonth(Integer.parseInt(policyNode.getChildText("max-home-per-month").strip()));
         builder.setWeeklyHoCreditsPerEmployee(Integer.parseInt(policyNode.getChildText("ho-credits-per-employee").strip()));
         builder.setMaxHoSlots(Integer.parseInt(policyNode.getChildText("max-ho-slots-per-day").strip()));
+        builder.setMaxSuccessiveHODays(Integer.parseInt(policyNode.getChildText("max-successive-ho-days").strip()));
+        builder.setMinDistanceBetweenHOBlocks(Integer.parseInt(
+                policyNode.getChildText("min-distance-between-ho-blocks").strip()));
 
         policy.createShiftPolicy(builder);
 

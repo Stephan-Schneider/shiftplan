@@ -55,6 +55,8 @@
                             <xs:element name="max-home-per-month" type="xs:int" default="8"/>
                             <xs:element name="ho-credits-per-employee" type="xs:int" default="2"/>
                             <xs:element name="max-ho-slots-per-day" type="xs:int" default="2"/>
+                            <xs:element name="max-successive-ho-days" type="xs:int" default="2"/>
+                            <xs:element name="min-distance-between-ho-blocks" type="xs:int" default="2"/>
                         </xs:sequence>
                     </xs:complexType>
                 </xs:element>

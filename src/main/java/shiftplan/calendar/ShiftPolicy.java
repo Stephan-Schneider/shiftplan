@@ -12,6 +12,8 @@ public class ShiftPolicy {
     private int maxHoSlots;
     private int weeklyHoCreditsPerEmployee;
     private int maxHoDaysPerMonth;
+    private int maxSuccessiveHODays;
+    private int minDistanceBetweenHOBlocks;
     private List<DayOfWeek> noLateShiftOn;
 
     private ShiftPolicy() {}
@@ -21,6 +23,8 @@ public class ShiftPolicy {
         this.maxHoSlots = builder.maxHoSlots;
         this.weeklyHoCreditsPerEmployee = builder.weeklyHoCreditsPerEmployee;
         this.maxHoDaysPerMonth = builder.maxHoDaysPerMonth;
+        this.maxSuccessiveHODays = builder.maxSuccessiveHODays;
+        this.minDistanceBetweenHOBlocks = builder.minDistanceBetweenHOBlocks;
         this.noLateShiftOn = builder.noLateShiftOn;
     }
 
@@ -40,6 +44,14 @@ public class ShiftPolicy {
         return maxHoDaysPerMonth;
     }
 
+    public int getMaxSuccessiveHODays() {
+        return maxSuccessiveHODays;
+    }
+
+    public int getMinDistanceBetweenHOBlocks() {
+        return minDistanceBetweenHOBlocks;
+    }
+
     public List<DayOfWeek> getNoLateShiftOn() {
         return noLateShiftOn;
     }
@@ -50,6 +62,8 @@ public class ShiftPolicy {
         private int maxHoSlots;
         private int weeklyHoCreditsPerEmployee;
         private int maxHoDaysPerMonth;
+        private int maxSuccessiveHODays;
+        private int minDistanceBetweenHOBlocks;
         private final List<DayOfWeek> noLateShiftOn = new ArrayList<>();
 
         public void setLateShiftPeriod(int lateShiftPeriod) {
@@ -66,6 +80,14 @@ public class ShiftPolicy {
 
         public void setMaxHoDaysPerMonth(int maxHoDaysPerMonth) {
             this.maxHoDaysPerMonth = maxHoDaysPerMonth;
+        }
+
+        public void setMaxSuccessiveHODays(int maxSuccessiveHODays) {
+            this.maxSuccessiveHODays = maxSuccessiveHODays;
+        }
+
+        public void setMinDistanceBetweenHOBlocks(int minDistanceBetweenHOBlocks) {
+            this.minDistanceBetweenHOBlocks = minDistanceBetweenHOBlocks;
         }
 
         public void addNoLateShiftOn(String weekday) {

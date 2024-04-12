@@ -144,10 +144,20 @@ auf einen Werktag fallen, registriert werden.\
 Im Abschnitt `shift-policy` werden folgende Parameter festgelegt:
 * `late-shift-period`: Anzahl der aufeinanderfolgenden Spätschichttage eines MA's.
 * `no-lateshift-on`: Wochentage, an denen keine Spätschicht stattfindet. Der XML-Tag kann maximal 5 x enthalten sein
-  (für alle Werktage von Mo. bis Fr.). Die Wochentage müssen in Großbuchstaben auf Englisch angegeben werden (z.B. MONDAY)
+(für alle Werktage von Mo. bis Fr.). Die Wochentage müssen in Großbuchstaben auf Englisch angegeben werden (z.B. MONDAY)
 * `max-home-per-month`: die maximal erlaubte Anzahl von Homeoffice-Tagen pro Monat.
 * `ho-credits-per-employee`: die maximal erlaubte Anzahl von Homeoffice-Tagen pro Woche für einen MA.
 * `max-ho-slots-per-day`: Maximale Anzahl von MA's, die an einem Tag von zu Hause arbeiten.
+* `max-successive-ho-days`: Maximal erlaubte Anzahl von aufeinanderfolgenden Home-Office Tagen. Der Wert dieses Parameters
+wird normalerweise unter der maximalen Anzahl von HO-Tagen pro Woche liegen, d.h. die erlaubte Anzahl von HO-Tagen
+wird innerhalb einer Woche verteilt und nicht als fortlaufender, ununterbrochener Block genommen. (Beispiel: einem MA
+stehen max. 3 Tage pro Woche zu, die maximale Anzahl an fortlaufenden HO-Tagen, ebenso wie die Sperrfrist (siehe 
+`min-distance-between-ho-blocks`), ist aber auf 2 Tage begrenzt. Er kann daher z.B. Montag, Dienstag eingeteilt werden,
+  dann aber erst wieder z.B. am Freitag der gleichen Woche).
+* `min-distance-between-ho-blocks`: Mindestanzahl von Tagen zwischen zwei Home-Office-Blöcken. Ein MA ist z.B. Montag
+und Dienstag ins HO eingeteilt, hat damit die maximale Anzahl fortlaufender HO-Tage erreicht und kann dann erst nach 
+einer Sperrfrist von zwei Tagen (also Freitag) erneut eingeteilt werden, um die max. erlaubte Gesamtanzahl von drei Tagen 
+pro Woche zu erreichen.
 
 Es folgt der Konfigurationsabschnitt für die einzelnen Mitarbeiter:
 * `employees`: Liste der Mitarbeiter/innen der Abteilung.

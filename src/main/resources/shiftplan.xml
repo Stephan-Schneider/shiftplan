@@ -3,23 +3,23 @@
 <!-- Attribut 'for': Jahr (vierstellig-), für welches der Plan erstellt wird (Pflichtattribut).
      Optional: start-date / end-date. Format start- / end-date: yyyy-MM -->
 <shiftplan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
- xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2023" start-date="2023-09" end-date="2023-12">
+ xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2024" start-date="2024-04" end-date="2024-12">
 
     <!-- Öffentliche Feiertage. Es sollten zumindest solche Feiertage angegeben werden, die auf einen Werktag fallen.
          Das Attribut 'name' ist optional, Datumsangabe im 'date'-Attribut: ISO-Format (yyyy-MM-dd) -->
     <public-holidays>
-        <holiday name="Neujahr" date="2023-01-01"/>
-        <holiday name="Karfreitag" date="2023-04-07"/>
-        <holiday name="Ostermontag" date="2023-04-10"/>
-        <holiday name="Tag der Arbeit" date="2023-05-01"/>
-        <holiday name="Christi Himmelfahrt" date="2023-05-18"/>
-        <holiday name="Pfingstmontag" date="2023-05-29"/>
-        <holiday name="Fronleichnam" date="2023-06-08"/>
-        <holiday name="Tag der dt. Einheit" date="2023-10-03"/>
-        <holiday name="Heiligabend" date="2023-12-24"/>
-        <holiday name="1. Weihnachtstag" date="2023-12-25"/>
-        <holiday name="2. Weihnachtstag" date="2023-12-26"/>
-        <holiday name="Sylvester" date="2023-12-31"/>
+        <holiday name="Neujahr" date="2024-01-01"/>
+        <holiday name="Karfreitag" date="2024-03-29"/>
+        <holiday name="Ostermontag" date="2024-04-01"/>
+        <holiday name="Tag der Arbeit" date="2024-05-01"/>
+        <holiday name="Christi Himmelfahrt" date="2024-05-09"/>
+        <holiday name="Pfingstmontag" date="2024-05-20"/>
+        <holiday name="Fronleichnam" date="2024-05-30"/>
+        <holiday name="Tag der dt. Einheit" date="2024-10-03"/>
+        <holiday name="Heiligabend" date="2024-12-24"/>
+        <holiday name="1. Weihnachtstag" date="2024-12-25"/>
+        <holiday name="2. Weihnachtstag" date="2024-12-26"/>
+        <holiday name="Sylvester" date="2024-12-31"/>
     </public-holidays>
 
     <shift-policy>
@@ -27,9 +27,14 @@
         <!-- Tage an denen keine Spätschicht vorgesehen ist (z.B. montags), Wochentage von Montag bis Freitag auf Englisch in Großschrift, optional -->
         <no-lateshift-on>MONDAY</no-lateshift-on>
         <!--<no-lateshift-on>TUESDAY</no-lateshift-on>-->
-        <max-home-per-month>8</max-home-per-month> <!-- Maximale Anzahl von Homeoffice-Tagen pro Monat -->
-        <ho-credits-per-employee>2</ho-credits-per-employee> <!-- Max. Anzahl von HO-Tagen pro Woche -->
-        <max-ho-slots-per-day>2</max-ho-slots-per-day> <!-- Maximale Anzahl von MA's, die an einem Tag von zu Hause arbeiten-->
+        <max-home-per-month>10</max-home-per-month> <!-- Maximale Anzahl von Homeoffice-Tagen pro Monat -->
+        <ho-credits-per-employee>3</ho-credits-per-employee> <!-- Max. Anzahl von HO-Tagen pro Woche -->
+        <max-ho-slots-per-day>3</max-ho-slots-per-day> <!-- Maximale Anzahl von MA's, die an einem Tag von zu Hause arbeiten-->
+        <max-successive-ho-days>2</max-successive-ho-days> <!-- Maximale Anzahl aufeinanderfolgender HO-Tage eines MA's-->
+        <!-- Mindestanzahl von Tagen, für die ein MA nach einer festgelegten Anzahl von aufeinanderfolgenden HO-Tagen für
+             eine weitere HO-Einteilung gesperrt ist
+         -->
+        <min-distance-between-ho-blocks>2</min-distance-between-ho-blocks>
     </shift-policy>
 
     <!-- Hinweis zur Konfiguration von Backups: Backups müssen reziprok erfasst werden. Wenn Mitarbeiter A einen
@@ -37,52 +42,77 @@
           andernfalls ist die Konfiguration unwirksam -->
     <employees>
         <employee id="ID-1">
-            <name>Greta</name>
-            <lastname>Thünberg</lastname>
-            <participation>HO_LS</participation> <!-- HO: nur Home-Office, LS: nur Spätschicht, HO_LS: Home-Office und Spätschicht -->
-            <color>#336699</color> <!-- Hervorhebungsfarbe des MA's im Plan -->
-            <email>stephanschneider34@hotmail.com</email>
+            <name>Josip</name>
+            <lastname>Varvodic</lastname>
+            <participation>HO_LS</participation>  <!-- HO: nur Home-Office, LS: nur Spätschicht, HO_LS: Home-Office und Spätschicht -->
+            <color>blue</color> <!-- Hervorhebungsfarbe des MA's im Plan -->
+            <email>josip.varvodic@dachser.com</email>
             <backups>
-                <backup idref="ID-2"/>
-                <backup idref="ID-4"/>
+                <backup idref="ID-3"/>
             </backups>
         </employee>
         <employee id="ID-2">
-            <name>Luisa</name>
-            <lastname>Neubauer</lastname>
-            <participation>HO</participation>
-            <color>#ff0000</color>
-            <email>stephan.god.schneider@googlemail.com</email>
+            <name>Sven</name>
+            <lastname>Pichelbauer</lastname>
+            <participation>LS</participation>
+            <color>#428045</color>
+            <email>sven.pichelbauer@dachser.com</email>
             <backups>
-                <backup idref="ID-1"/>
+                <backup idref="ID-4"/>
+                <backup idref="ID-5"/>
             </backups>
         </employee>
         <employee id="ID-3">
-            <name>Alexander</name>
-            <lastname>Gauland</lastname>
-            <participation>LS</participation>
-            <color>brown</color>
+            <name>Jelena</name>
+            <lastname>Vidovic</lastname>
+            <participation>HO_LS</participation>
+            <color>#d15019</color>
+            <email>jelena.vidovic@dachser.com</email>
+            <backups>
+                <backup idref="ID-1" />
+            </backups>
         </employee>
         <employee id="ID-4">
-            <name>Beatrix</name>
-            <lastname>von Storch</lastname>
+            <name>Eva</name>
+            <lastname>Rohs</lastname>
             <participation>HO_LS</participation>
-            <color>blue</color>
+            <color>#fa0905</color>
+            <email>eva.rohs@dachser.com</email>
             <backups>
-                <backup idref="ID-1"/>
+                <backup idref="ID-2"/>
+                <backup idref="ID-5" />
             </backups>
         </employee>
         <employee id="ID-5">
-            <name>Donald</name>
-            <lastname>Trump</lastname>
+            <name>Stephan</name>
+            <lastname>Schneider</lastname>
             <participation>HO_LS</participation>
-            <color>darkgoldenrod</color>
+            <color>#336699</color>
+            <email>stephan.schneider@dachser.com</email>
+            <backups>
+                <backup idref="ID-2" />
+                <backup idref="ID-4" />
+            </backups>
         </employee>
         <employee id="ID-6">
-            <name>Silvio</name>
-            <lastname>Berlusconi</lastname>
-            <participation>HO_LS</participation>
-            <color>#ff00aa</color>
+            <name>Max</name>
+            <lastname>Eyhorn</lastname>
+            <participation>HO</participation>
+            <color>#0000ee</color>
+            <email>max.eyhorn@dachser.com</email>
+            <backups>
+                <backup idref="ID-7" />
+            </backups>
+        </employee>
+        <employee id="ID-7">
+            <name>Carolin</name>
+            <lastname>Roos</lastname>
+            <participation>HO</participation>
+            <color>#ee0000</color>
+            <email>Carolin.Roos@dachser.com</email>
+            <backups>
+                <backup idref="ID-6" />
+            </backups>
         </employee>
     </employees>
 </shiftplan>

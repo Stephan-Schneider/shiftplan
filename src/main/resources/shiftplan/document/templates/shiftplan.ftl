@@ -264,8 +264,8 @@
                 <td>${shiftInfo["lateShiftDuration"]} Tage</td>
             </tr>
             <tr>
-                <td class="left">Anzahl Homeoffice-Slots:</td>
-                <td>${shiftInfo["hoSlotsPerShift"]} Slots pro Tag</td>
+                <td class="left">Anzahl Homeoffice-Stellen:</td>
+                <td>${shiftInfo["hoSlotsPerShift"]} MA's pro Tag</td>
             </tr>
             <tr>
                 <td class="left">Anzahl Homeoffice-Tage:</td>
@@ -274,6 +274,14 @@
             <tr>
                 <td class="left">Max. Anzahl von HO-Tagen:</td>
                 <td>${shiftInfo["maxHoDaysPerMonth"]} Tage pro Monat</td>
+            </tr>
+            <tr>
+                <td class="left">Max. Anzahl aufeinanderfolgender HO-Tage:</td>
+                <td>${shiftInfo["maxSuccessiveHODays"]} Tage</td>
+            </tr>
+            <tr>
+                <td class="left">Mindestdauer der HO-Sperre nach ${shiftInfo["maxSuccessiveHODays"]} Tagen:</td>
+                <td>${shiftInfo["minDistanceBetweenHOBlocks"]} Tage</td>
             </tr>
             </tbody>
         </table>

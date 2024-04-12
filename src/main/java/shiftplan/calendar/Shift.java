@@ -6,6 +6,7 @@ import shiftplan.users.Employee;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.List;
 
 public class Shift {
 
@@ -73,12 +74,29 @@ public class Shift {
         return isOverrun;
     }
 
+    public boolean isBlocked(Employee hoCandidate) {
+        return hoCandidate.isBlocked();
+    }
+
     public void addEmployeeInHo(Employee employee) {
         ++index;
         if (index < employeesInHo.length) {
             employeesInHo[index] = employee;
             employee.countDownHomeOfficeBalance();
+            employee.increaseSuccessiveHODaysCounter();
             employee.addToHoDaysTotal(date.getMonthValue());
+        }
+    }
+
+    public void discountBlocks(Employee[] allEmployees) {
+        // Alle employees, die nicht in dieser Schicht für das HO vorgesehen sind (nicht eingeteilt wurden), wird der
+        // Zähler für die aufeinanderfolgenden HO-Tage zurückgesetzt und die HO-Sperre um einen Tag reduziert
+        List<Employee> employeesInHoAsList = Arrays.asList(employeesInHo);
+        for (Employee emp : allEmployees) {
+            if (!employeesInHoAsList.contains(emp)) {
+                emp.resetSuccessiveHODaysCounter();
+                emp.discountBlock();
+            }
         }
     }
 

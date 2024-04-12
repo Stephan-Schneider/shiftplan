@@ -26,6 +26,8 @@ public class ShiftSwapDataModelConverter {
         shiftInfo.put("hoCreditsPerWeek", policy.getWeeklyHoCreditsPerEmployee());
         shiftInfo.put("maxHoDaysPerMonth", policy.getMaxHoDaysPerMonth());
         shiftInfo.put("lateShiftDuration", policy.getLateShiftPeriod());
+        shiftInfo.put("maxSuccessiveHODays", policy.getMaxSuccessiveHODays());
+        shiftInfo.put("minDistanceBetweenHOBlocks", policy.getMinDistanceBetweenHOBlocks());
         return shiftInfo;
     }
 
