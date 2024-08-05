@@ -8,11 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import shiftplan.ShiftPlanRunner;
 import shiftplan.calendar.SwapParams;
-import shiftplan.publish.EmailDispatch;
-import shiftplan.users.Employee;
 
-import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 
 public class ModifyHandler implements HttpHandler {
@@ -44,19 +40,8 @@ public class ModifyHandler implements HttpHandler {
         try {
             ShiftPlanRunner runner = new ShiftPlanRunner();
             SwapParams swapParams = runner.getOperationalParams(paramString);
-            Map<String, Object> dataModel = runner.modifyShiftPlan(
-                    config.getShiftPlanCopyXMLFile(), config.getShiftPlanCopySchemaDir(), swapParams);
+            runner.modifyShiftPlan(config.getShiftPlanCopyXMLFile(), config.getShiftPlanCopySchemaDir(), swapParams);
 
-            Path attachment = runner.createPDF(config.getTemplateDir(), dataModel, config.getPdfOutDir());
-            logger.info("Neuer Schichtplan in '{}' gespeichert", attachment.toString());
-
-            String smtpPwd = params.getOrDefault("smtpPwd", "false");
-            if (!"false".equalsIgnoreCase(smtpPwd)) {
-                logger.info("der geänderte Schichtplan wird an alle Mitarbeiter gesendet ...");
-                Employee[] employees = (Employee[]) dataModel.get("employees");
-                EmailDispatch emailDispatch = new EmailDispatch(config.getSmtpConfigPath());
-                emailDispatch.sendMail(List.of(employees), attachment, smtpPwd);
-            }
             exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain; charset=utf-8");
             exchange.getResponseSender().send("Schichtplan geändert");
         } catch (Exception e) {
@@ -64,7 +49,7 @@ public class ModifyHandler implements HttpHandler {
             errorMessage = e.getMessage();
             exchange.setStatusCode(500);
             exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain; charset=utf-8");
-            exchange.getResponseSender().send("500 - Internal Server Error: " + errorMessage);
+            exchange.getResponseSender().send(errorMessage);
         }
     }
 }

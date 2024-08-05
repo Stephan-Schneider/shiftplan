@@ -55,12 +55,23 @@ public class ShiftSwap {
         public int getUndistributedHoB() {
             return undistributedHoB;
         }
+
+        @Override
+        public String toString() {
+            return "SwapResult{" +
+                    "swapMode=" + swapMode +
+                    ", swapHO=" + swapHO +
+                    ", employeeA=" + employeeA +
+                    ", undistributedHoA=" + undistributedHoA +
+                    ", employeeB=" + employeeB +
+                    ", undistributedHoB=" + undistributedHoB +
+                    '}';
+        }
     }
 
     private final ShiftPolicy policy = ShiftPolicy.INSTANCE;
 
     private final ShiftPlanCopy shiftPlanCopy;
-    private final Map<ShiftPlanCopy.CalendarWeek, ShiftPlanCopy.WorkDay[]> calendarWeeks;
     private final Map<Integer, ShiftPlanCopy.WorkDay[]> simpleCalendarWeeks;
     private final List<ShiftPlanCopy.CalendarWeek> sortedKeys;
     private final int minIndex;
@@ -80,7 +91,6 @@ public class ShiftSwap {
 
     public ShiftSwap(ShiftPlanCopy copy, OP_MODE swap_mode, boolean swapHo) {
         shiftPlanCopy = copy;
-        calendarWeeks = shiftPlanCopy.getCalendarWeeks();
 
         if (swap_mode != OP_MODE.SWAP && swap_mode != OP_MODE.REPLACE) {
             throw new ShiftPlanSwapException(
@@ -91,27 +101,11 @@ public class ShiftSwap {
         this.swapMode = swap_mode;
         this.swapHO = swapHo;
 
-        simpleCalendarWeeks = new HashMap<>();
-        sortedKeys = new ArrayList<>(calendarWeeks.keySet());
-        sortedKeys.sort(Comparator.comparing(ShiftPlanCopy.CalendarWeek::cwIndex));
-        sortedKeys.forEach(calendarWeek -> simpleCalendarWeeks.put(calendarWeek.cwIndex(), calendarWeeks.get(calendarWeek)));
+        sortedKeys = shiftPlanCopy.getSortedKeys();
+        simpleCalendarWeeks = shiftPlanCopy.getSimpleCalenderWeeks();
 
-        minIndex = sortedKeys
-                .stream()
-                .map(ShiftPlanCopy.CalendarWeek::cwIndex)
-                .mapToInt(Integer::intValue)
-                .min()
-                .orElse(-1);
-        logger.debug("Kleinster Kalenderwochen-Index: {}", minIndex);
-
-
-        maxIndex = sortedKeys
-                .stream()
-                .map(ShiftPlanCopy.CalendarWeek::cwIndex)
-                .mapToInt(Integer::intValue)
-                .max()
-                .orElse(-1);
-        logger.debug("Größter KalenderWochen-Index: {}", maxIndex);
+        minIndex = shiftPlanCopy.getMinIndex();
+        maxIndex = shiftPlanCopy.getMaxIndex();
     }
 
     public List<ShiftPlanCopy.CalendarWeek> getCalendarWeeks() {
@@ -345,9 +339,8 @@ public class ShiftSwap {
                 //  - Max. <maxHOSlotsPerDay> MA's im Home-Office an einem Tag
                 //  - Keinen Backup-Konflikt mit als Backup zugeteilten MA's
                 //  - Home-Office schließt Spätschicht aus und umgekehrt
-                // NICHT befolgt wird die <maxHODaysPerMonth> - Regel, da auf Basis der übergebenen Daten nicht geprüft
-                // werden kann, ob die maximale Anzahl von Home-Office-Tagen pro Monat bei der Zuteilung von HO-Tagen
-                // überschritten wird.
+                // NICHT befolgt werden die <maxHODaysPerMonth>- und die <maxSuccessiveHoDays> - Regeln, da es auf Basis
+                // der übergebenen Daten zu aufwendig wäre, die Einhaltung dieser Regeln zu prüfen.
                 if (remainingWeeklyHoCredits == 0) {
                     logger.info("Alle HomeOffice-Optionen in KW {} erschöpft. Wechsel zur nächsten KW ...", cwIndex);
                     // Keine HO-Tage mehr in der laufenden Woche zu verteilen, Wochenschleife (innere Schleife)

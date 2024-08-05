@@ -2,29 +2,75 @@ package shiftplan.web;
 
 import io.undertow.Handlers;
 import io.undertow.Undertow;
+import io.undertow.security.api.AuthenticationMechanism;
+import io.undertow.security.api.AuthenticationMode;
+import io.undertow.security.api.SecurityContext;
+import io.undertow.security.handlers.AuthenticationCallHandler;
+import io.undertow.security.handlers.AuthenticationConstraintHandler;
+import io.undertow.security.handlers.AuthenticationMechanismsHandler;
+import io.undertow.security.handlers.SecurityInitialHandler;
+import io.undertow.security.idm.IdentityManager;
+import io.undertow.security.impl.BasicAuthenticationMechanism;
+import io.undertow.server.HttpHandler;
+import io.undertow.server.handlers.resource.PathResourceManager;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
+import io.undertow.util.MimeMappings;
 
+import static io.undertow.Handlers.resource;
+
+import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 
 public class ShiftplanServer {
 
-    public static void createServer(int port) {
+    static final String BASE_PATH = ConfigBundle.INSTANCE.getWebResourcesBasePath();
 
-        // Bei Aufruf der PUT-Routings müssen alle Parameter angegeben werden, einschließlich des smtpPwd-Parameters.
-        // Falls kein Emailversand durchgeführt werden soll, den Wert 'false' angegeben
+    public static void createServer(String host, int port) {
+
+        final IdentityManager identityManager = new PrefsIdentityManager();
+
+        // Bei Aufruf der Modify-Handler müssen 5 Parameter angegeben werden, wenn ein REPLACE durchgeführt wird und
+        // 6 Parameter bei einem SWAP
         Undertow server = Undertow.builder()
-                .addHttpListener(port, "0.0.0.0")
+                .addHttpListener(port, host)
                 .setHandler(Handlers.path()
+                        .addPrefixPath("/", resource(
+                                new PathResourceManager(
+                                        Path.of(BASE_PATH),
+                                        100,
+                                        false,
+                                        true
+                                ))
+                                .setDirectoryListingEnabled(true)
+                                .setMimeMappings(MimeMappings.DEFAULT)
+                        )
                         .addPrefixPath("api/shiftplan", Handlers.routing()
                                 .add(new HttpString("head"), "/stafflist", exchange -> {
                                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain; charset=utf-8");
                                     exchange.getResponseSender().send("");
 
                                 })
+                                .get("/authenticate", addSecurity(exchange -> {
+                                    final SecurityContext context = exchange.getSecurityContext();
+                                    String msg;
+                                    if (context.isAuthenticated()) {
+                                        exchange.setStatusCode(200);
+                                        msg = "User authentifiziert";
+                                    } else {
+                                        exchange.setStatusCode(401);
+                                        msg = "Zugriff verweigert";
+                                    }
+                                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain; charset=utf-8");
+                                    exchange.getResponseSender().send(msg);
+                                }, identityManager))
+                                .get("/create", new CreateHandler())
+                                .post("/create", new CreateHandler())
+                                .put("/publish/{format}", new PublishHandler())
                                 .get("/stafflist", new StaffListHandler())
-                                .put("/modify/{mode}/{swapHo}/{emp1ID}/{cwIndex1}/{emp2ID}/{smtpPwd}", new ModifyHandler())
-                                .put("/modify/{mode}/{swapHo}/{emp1ID}/{cwIndex1}/{emp2ID}/{cwIndex2}/{smtpPwd}", new ModifyHandler())
+                                .put("/modify/{mode}/{swapHo}/{emp1ID}/{cwIndex1}/{emp2ID}", new ModifyHandler())
+                                .put("/modify/{mode}/{swapHo}/{emp1ID}/{cwIndex1}/{emp2ID}/{cwIndex2}", new ModifyHandler())
                                 .setFallbackHandler(exchange -> {
                                     exchange.setStatusCode(404);
                                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
@@ -32,7 +78,12 @@ public class ShiftplanServer {
                                 })
                                 .setInvalidMethodHandler(exchange -> {
                                     HttpString method = exchange.getRequestMethod();
-                                    if (!List.of(new HttpString("get"), new HttpString("put"), new HttpString("head")).contains(method)) {
+                                    if (!List.of(
+                                            new HttpString("get"),
+                                            new HttpString("post"),
+                                            new HttpString("put"),
+                                            new HttpString("head")
+                                            ).contains(method)) {
                                         exchange.setStatusCode(405);
                                         exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
                                         exchange.getResponseSender().send("405 - Invalid Method");
@@ -43,5 +94,16 @@ public class ShiftplanServer {
                 )
                 .build();
         server.start();
+    }
+
+    private static HttpHandler addSecurity(final HttpHandler toWrap, final IdentityManager identityManager) {
+        HttpHandler handler = toWrap;
+        handler = new AuthenticationCallHandler(handler);
+        handler = new AuthenticationConstraintHandler(handler);
+        final List<AuthenticationMechanism> mechanisms = Collections.singletonList(
+                new BasicAuthenticationMechanism("Shiftplan App"));
+        handler = new AuthenticationMechanismsHandler(handler, mechanisms);
+        handler = new SecurityInitialHandler(AuthenticationMode.PRO_ACTIVE, identityManager, handler);
+        return handler;
     }
 }

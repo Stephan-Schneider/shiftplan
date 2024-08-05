@@ -8,8 +8,10 @@ import org.apache.logging.log4j.Logger;
 import org.jdom2.JDOMException;
 import org.jsoup.nodes.Document;
 import shiftplan.calendar.*;
+import shiftplan.data.IShiftplanDescriptor;
 import shiftplan.data.InvalidShiftPlanException;
-import shiftplan.data.ShiftPlanDescriptor;
+import shiftplan.data.json.ShiftplanDescriptorJson;
+import shiftplan.data.xml.ShiftPlanDescriptor;
 import shiftplan.data.ShiftPlanSerializer;
 import shiftplan.document.DocGenerator;
 import shiftplan.document.TemplateProcessor;
@@ -34,13 +36,19 @@ public class ShiftPlanRunner {
 
     private static final Logger logger = LogManager.getLogger(ShiftPlanRunner.class);
 
-    public Map<String, Object> createShiftPlan(String xmlPath, String shiftPlanCopyXMLFile, SwapParams swapParams) {
+    public void createShiftPlan(String xmlPath, String shiftPlanCopyXMLFile, SwapParams swapParams) {
         if (swapParams.getMode() != OP_MODE.CREATE) {
             throw new ShiftPlanRunnerException("Ungültiger Operation-Mode: " +  swapParams.getMode().toString());
         }
 
-        ShiftPlanDescriptor descriptor = getShiftPlanDescriptor(xmlPath);
+        IShiftplanDescriptor descriptor = getShiftPlanDescriptor(xmlPath);
+        this.createShiftplan(descriptor, shiftPlanCopyXMLFile);
+    }
 
+    public void createShiftplan(IShiftplanDescriptor descriptor, String shiftPlanCopyXMLFile) {
+        if (descriptor == null) {
+            throw new ShiftPlanRunnerException("Keine Schichtplan-Beschreibungsdaten vorhanden!");
+        }
         int year = descriptor.getYear();
         LocalDate startDate = descriptor.getStartDate();
         LocalDate endDate = descriptor.getEndDate();
@@ -55,9 +63,6 @@ public class ShiftPlanRunner {
         Map<Integer, LocalDate[]> calendar = shiftCalendar.createCalendar(startDate, endDate);
 
         shiftPlanner.createHomeOfficePlan(employees, shiftPlan, calendar);
-
-        HomeOfficeRecord.createHomeOfficeReport(employees, startDate, endDate);
-        List<HomeOfficeRecord> records = HomeOfficeRecord.getAllRecords();
 
         ShiftPlanSerializer serializer = new ShiftPlanSerializer(shiftPlanCopyXMLFile);
         org.jdom2.Document doc = serializer.serializeShiftPlan(
@@ -75,14 +80,9 @@ public class ShiftPlanRunner {
             logger.error("Ausnahme beim Schreiben der shiftplan - XML-Datei", ex);
             throw new ShiftPlanRunnerException(ex.getMessage());
         }
-
-        Map<String, Object> dataModel = createDataModel(startDate, endDate, employees, shiftPlan, calendar);
-        dataModel.put("homeOfficeRecords", records);
-
-        return dataModel;
     }
 
-    public Map<String, Object> modifyShiftPlan(String shiftPlanCopyXMLFile, String shiftPlanCopySchemaDir,
+    public void modifyShiftPlan(String shiftPlanCopyXMLFile, String shiftPlanCopySchemaDir,
                                                SwapParams swapParams) {
         OP_MODE mode = swapParams.getMode();
 
@@ -110,20 +110,32 @@ public class ShiftPlanRunner {
                         Integer.parseInt(employeeSet2[1])
                 );
             }
-            ShiftSwapDataModelConverter converter = new ShiftSwapDataModelConverter(copy, swapper);
+            // Das Ergebnis des HO-Tauschs wird nicht (mehr) im generierten Schichtplan angezeigt, sondern nur als
+            // Information in die Log-datei geschrieben
+            logger.info(swapResult);
+
+            ShiftSwapDataModelConverter converter = new ShiftSwapDataModelConverter(copy);
 
             org.jdom2.Document document = serializer.serializeShiftPlan(converter);
             serializer.writeXML(document);
-
-            Map<String, Object> dataModel = createDataModel(converter);
-            dataModel.put("swapResult", swapResult);
-            return dataModel;
         } catch (NullPointerException | IllegalArgumentException | IOException | JDOMException ex) {
             throw new ShiftPlanSwapException(ex.getMessage());
         } catch (IndexOutOfBoundsException ex) {
             String error = "Die employeeA-Daten müssen immer die ID sowie den KW-Index enthalten. Die employeeB-Daten " +
                     "müssen im Operation-Modus SWAP die ID und den KW-Index, im REPLACE-Modus die ID enthalten";
             throw new ShiftPlanSwapException(error);
+        }
+    }
+
+    public Map<String, Object> getShiftplanCopy(String shiftPlanCopyXMLFile, String shiftPlanCopySchemaDir) {
+        ShiftPlanSerializer serializer = new ShiftPlanSerializer(shiftPlanCopyXMLFile, shiftPlanCopySchemaDir);
+        try {
+            ShiftPlanCopy copy = serializer.deserializeShiftplan();
+            ShiftSwapDataModelConverter converter = new ShiftSwapDataModelConverter(copy);
+            Map<String, Object> dataModel = createDataModel(converter);
+            return dataModel;
+        } catch (IOException | JDOMException e) {
+            throw new ShiftPlanRunnerException(e.getMessage());
         }
     }
 
@@ -164,11 +176,37 @@ public class ShiftPlanRunner {
         dataModel.put("employees", employees);
         dataModel.put("shiftPlan", shiftPlan);
         dataModel.put("calendar", calendar);
-        return dataModel;
 
+        HomeOfficeRecord.createHomeOfficeReport(employees, from, to);
+        List<HomeOfficeRecord> records = HomeOfficeRecord.getAllRecords();
+        dataModel.put("homeOfficeRecords", records);
+
+        return dataModel;
     }
 
     public Path createPDF(String templateDir, Map<String, Object> dataModel, String outDir)
+            throws IOException, TemplateException {
+        String output = processTemplate(templateDir, dataModel);
+
+        // Pfad für den zu erstellenden Schichtplan
+        Path pathToPDF;
+        //String fileName = "Schichtplan_" + dataModel.get("startDate") + "_bis_" + dataModel.get("endDate");
+        String fileName = "Schichtplan"; // Vereinfachter Name im Web-Modus
+        if (outDir == null || outDir.isEmpty()) {
+            pathToPDF = Files.createTempFile(fileName, ".pdf");
+            pathToPDF.toFile().deleteOnExit();
+        } else {
+            pathToPDF = Path.of(outDir, fileName + ".pdf");
+        }
+
+        DocGenerator docGenerator = new DocGenerator();
+        Document document = docGenerator.getRawHTML(output);
+        docGenerator.createPDF(document, pathToPDF);
+
+        return pathToPDF;
+    }
+
+    public String processTemplate(String templateDir, Map<String, Object> dataModel, String... templateFileNames)
             throws IOException, TemplateException {
         TemplateProcessor processor = TemplateProcessor.INSTANCE;
         if (templateDir == null || templateDir.isEmpty()) {
@@ -181,26 +219,34 @@ public class ShiftPlanRunner {
             // angegeben werden.
             processor.initConfiguration(templateDir);
         }
-        StringWriter output = processor.processDocumentTemplate(dataModel, "shiftplan.ftl");
-
-        // Pfad für den zu erstellenden Schichtplan
-        Path pathToPDF;
-        String fileName = "Schichtplan_" + dataModel.get("startDate") + "_bis_" + dataModel.get("endDate");
-        if (outDir == null || outDir.isEmpty()) {
-            pathToPDF = Files.createTempFile(fileName, ".pdf");
-            pathToPDF.toFile().deleteOnExit();
-        } else {
-            pathToPDF = Path.of(outDir, fileName + ".pdf");
-        }
-
-        DocGenerator docGenerator = new DocGenerator();
-        Document document = docGenerator.getRawHTML(output.toString());
-        docGenerator.createPDF(document, pathToPDF);
-
-        return pathToPDF;
+        // Optional kann ein alternatives Template angegeben werden, z.B. 'shiftplan_web.ftl' für die Erstellung eines
+        // Schichtplans im HTML-Format
+        String fileName = templateFileNames.length > 0 ? templateFileNames[0] : "shiftplan.ftl";
+        StringWriter output = processor.processDocumentTemplate(dataModel, fileName);
+        return output.toString();
     }
 
-    private ShiftPlanDescriptor getShiftPlanDescriptor(String xmlPath) {
+    private IShiftplanDescriptor getShiftPlanDescriptor(String xmlPath) {
+        ConfigBundle bundle = ConfigBundle.INSTANCE;
+        if (bundle.getJsonFile() != null && !bundle.getJsonFile().isEmpty()) {
+            // Die Schichtplan - Datei im JSON-Format (shiftplan.json) hat Vorrang vor der äquivalenten XML-Datei
+            // (shiftplan.xml).
+            // Die JSON-Datei ist in erster Linie für die Ausführung der Anwendung im Web-Modus gedacht, kann aber auch
+            // verwendet werden, wenn die Anwendung lokal ausgeführt wird.
+            return ShiftplanDescriptorJson.readObject();
+        }
+
+        ShiftPlanDescriptor descriptor = getXMLDescriptor(xmlPath);
+        try {
+            descriptor.parseDocument();
+        } catch (IOException | JDOMException ex) {
+            logger.error("Kann keinen ShiftPlan-Descriptor generieren!");
+            throw new ShiftPlanRunnerException(ex.getMessage());
+        }
+        return descriptor;
+    }
+
+    private static ShiftPlanDescriptor getXMLDescriptor(String xmlPath) {
         ShiftPlanDescriptor descriptor;
         if (xmlPath == null || xmlPath.isEmpty()) {
             // Die Instanziierung läuft unter cer Voraussetzung fehlerfrei, dass sich die xml- und xsd-Datei
@@ -211,12 +257,6 @@ public class ShiftPlanRunner {
             // shiftplan-xml nicht editiert werden - die Datei muss also in einem außerhalb des Archivs
             // befindlichen Ordner abgelegt werden. Das XML-Schema muss sich im gleichen Ordner befinden.
             descriptor =  new ShiftPlanDescriptor(Path.of(xmlPath));
-        }
-        try {
-            descriptor.parseDocument();
-        } catch (IOException | JDOMException ex) {
-            logger.error("Kann keinen ShiftPlan-Descriptor generieren!");
-            throw new ShiftPlanRunnerException(ex.getMessage());
         }
         return descriptor;
     }
@@ -237,13 +277,28 @@ public class ShiftPlanRunner {
         return SwapParams.readSwapParams(path);
     }
 
+    private static Path createGeneratedDataDir(String generatedDataDir) throws IOException, IllegalArgumentException{
+        if (generatedDataDir == null || generatedDataDir.isBlank()) {
+            throw new IllegalArgumentException("Kein gültiger Wert für generated data - Verzeichnis");
+        }
+
+        Path path = Path.of(generatedDataDir);
+        if (Files.isDirectory(path) && Files.isReadable(path) && Files.isWritable(path)) {
+            return path;
+        }
+        Path newPath = Files.createDirectories(path);
+        logger.info("Erstelltes Generated - Data Verzeichnis: {}", newPath);
+        return newPath;
+    }
+
     private static Options getCLIArgs() throws ParseException {
         // Definition der Kommandozeilen-Argumente
 
         Option xmlOption = Option
                 .builder("x")
                 .longOpt("xmlPath")
-                .desc("Enthält shiftplan.xml und shiftplan.xsd. Obligatorisch, wenn Anwendung in JAR gepackt ist")
+                .desc("Pfad zum XML-Ordner. Enthält shiftplan.xml, shiftplan.xsd und shiftplan_serialized.xsd." +
+                        " Obligatorisch, wenn der Ordner außerhalb des Installationsverzeichnis liegt")
                 .hasArg()
                 .argName("Pfad")
                 .build();
@@ -251,26 +306,24 @@ public class ShiftPlanRunner {
         Option templateOption = Option.
                 builder("t")
                 .longOpt("templatePath")
-                .desc("Enthält shiftplan.ftl (kann mit XML-Verzeichnis identisch sein). Obligatorisch," +
-                        " wenn Anwendung in JAR gepackt ist")
+                .desc("Enthält shiftplan.ftl. Obligatorisch, wenn Anwendung in JAR gepackt ist")
                 .hasArg()
                 .argName("Pfad")
                 .build();
 
         Option outDirOption = Option
-                .builder("o")
-                .longOpt("outDir")
-                .desc("Pfad zum Speicherort (Verzeichnis) der Shiftplan-Datei. Falls nicht angegeben wird eine " +
-                        "temporäre Datei im Standardverzeichnis für Temp-Dateien des jeweiligen Betriebssystems " +
-                        "angelegt")
+                .builder("g")
+                .longOpt("generatedData")
+                .desc("Pfad zu den von der Anwendung generierten Dateien (shiftplan.json, shiftplan_serialized.xml," +
+                        " Schichtplan.html|.pdf.")
                 .hasArg()
                 .argName("Pfad")
                 .build();
 
         Option configOption = Option
-                .builder("c")
-                .longOpt("configPath")
-                .desc("Pfad zur Konfigurationsdatei (bei Emailversand aus dem Programm) - optional")
+                .builder("e")
+                .longOpt("mailConfigPath")
+                .desc("Pfad zur Email-Konfigurationsdatei (bei Emailversand aus dem Programm) - optional")
                 .hasArg()
                 .argName("Pfad")
                 .build();
@@ -292,23 +345,6 @@ public class ShiftPlanRunner {
                 .hasArg(false)
                 .build();
 
-        Option serSchemaPathOption = Option
-                .builder("v")
-                .longOpt("xmlSerSchemaPath")
-                .desc("Pfad zum XSD-Schema zur Validierung der shiftplan_serialised.xml - Datei. Das Schema und der " +
-                        "serialisierte Schichtplan müssen sich nicht im gleichen Verzeichnis befinden ")
-                .hasArg()
-                .argName("Pfad")
-                .build();
-
-        Option xmlSerializedIOption = Option
-                .builder("d")
-                .longOpt("xmlSerialized")
-                .desc("Pfad zur shiftplan-serialized.xml - Datei, die den serialisierten Schichtplan enthält")
-                .hasArg()
-                .argName("Datei-Pfad")
-                .build();
-
         Option swapParamsOption = Option
                 .builder("m") // modify
                 .longOpt("swapData")
@@ -328,29 +364,44 @@ public class ShiftPlanRunner {
                 .argName("Swap-Parameter (JSON)")
                 .build();
 
-        Option queryStaffListOption = Option
-                .builder("q")
-                .longOpt("query")
-                .desc("Erstellung einer Mitarbeiter-Liste, enthaltend die MA-Id, Vorname + Name ('DisplayName) " +
-                        "und eine Liste der Spätschicht - Kalenderwochenindizes. Die Liste wird in einer Datei gespeichert " +
-                        "und vom Shiftplan Remote-Tool abgefragt, um Auswahllisten in der GUI mit den MA-Daten zu befüllen")
-                .hasArg(false)
+        Option webResourcesOption = Option
+                .builder("w")
+                .longOpt("webResourcesBasePath")
+                .desc("Basispfad für das öffentliche Verzeichnis, in dem sich die Webressourcen befinden")
+                .hasArg()
+                .argName("webResourcesPath")
                 .build();
 
-        Option staffListPathOption = Option
-                .builder("l") // list staff
-                .longOpt("list")
-                .desc("Pfad zur Mitarbeiter-Liste - wird nur berücksichtigt wenn auch die Option -q (--query) " +
-                        "angegeben wird")
+        Option useJsonShiftplanOption = Option
+                .builder("u")
+                .longOpt("useJsonShiftlanConfig")
+                .desc("Die Datei shiftplan.json wird anstelle von shiftplan.xml als Konfigurationsdatei verwendet")
                 .hasArg()
-                .argName("staffListDirPath")
+                .argName("userJsonShiftplan")
+                .build();
+
+        Option createStafflistOption = Option
+                .builder("l")
+                .longOpt("createStafflist")
+                .desc("Erstelle eine Mitarbeiter-Liste mit den jeweiligen Kalenderwochen bei lokaler Ausführung")
+                .hasArg(false)
+                .argName("createStafflist")
                 .build();
 
         Option serverOption = Option
                 .builder("S") // start web server
-                .desc("Startet einen Webserver für den Remote-Zugriff zum Ändern eines Schichtplans")
+                .desc("Startet einen Webserver zur Ausführung der Anwendung als Web-Service. Die Anwendung" +
+                        " benutzt im Server-Modus die shiftplan.json - Datei zum Lesen und Schreiben der" +
+                        " Schichtplan-Konfiguration")
                 .hasArg(false)
                 .argName("startServer")
+                .build();
+
+        Option hostOption = Option
+                .builder("H")
+                .desc("Host-Adresse, an die der Server-Socket gebunden wird (localhost|127.0.0.1 oder 0.0.0.0)")
+                .hasArg()
+                .argName("serverHost")
                 .build();
 
         Option portOption = Option
@@ -358,6 +409,7 @@ public class ShiftPlanRunner {
                 .desc("Startet den Webserver an Port <port>")
                 .hasArg()
                 .argName("serverPort")
+                .type(Integer.class)
                 .build();
 
 
@@ -372,33 +424,29 @@ public class ShiftPlanRunner {
         options.addOption(configOption);
         options.addOption(pwdOption);
         options.addOption(sendMailOption);
-        options.addOption(serSchemaPathOption);
-        options.addOption(xmlSerializedIOption);
         options.addOption(swapParamsOption);
         options.addOption(swapParamJSONOption);
-        options.addOption(queryStaffListOption);
-        options.addOption(staffListPathOption);
+        options.addOption(webResourcesOption);
+        options.addOption(useJsonShiftplanOption);
+        options.addOption(createStafflistOption);
         options.addOption(serverOption);
+        options.addOption(hostOption);
         options.addOption(portOption);
 
         return options;
     }
 
     public static void main(String[] args) {
-        // -x, --xmlPath: Enthält shiftplan.xml und shiftplan.xsd. Obligatorisch, wenn Anwendung in JAR gepackt ist.
-        // -t, --templatePath: Enthält shiftplan.ftl (kann mit XML-Verzeichnis identisch sein). Obligatorisch,
-        //          wenn Anwendung in JAR gepackt ist
-        // -o, --outDir: Pfad zum Speicherort (Verzeichnis) der Shiftplan-Datei. Falls nicht angegeben, wird eine
-        //          temporäre Datei im Standardverzeichnis für Temp-Dateien des jeweiligen Betriebssystems angelegt
-        // -c, --configPath: Pfad zur Konfigurationsdatei (bei Emailversand aus dem Programm) - optional
+        // -x, --xmlPath: Enthält shiftplan.xml, shiftplan.xsd und shiftplan_serialized.xsd. Obligatorisch, wenn
+        //          Anwendung in JAR gepackt ist.
+        // -t, --templatePath: Enthält shiftplan.ftl. Obligatorisch, wenn Anwendung in JAR gepackt ist
+        // -g, --generatedData: Pfad zu den von der Anwendung generierten Dateien (shiftplan.json,
+        //          shiftplan_serialized.xml, Schichtplan.html|.pdf.
+        // -e, --configPath: Pfad zur SMTP-Konfigurationsdatei (bei Emailversand aus dem Programm) - optional
         // -p, --smtpPassword: SMTP-Passwort (bei Emailversand aus dem Programm) - optional. Obligatorisch nur, wenn
         //          Emailversand aktiviert
         // -s, --sendMail: Option nur angeben, wenn Emailversand aktiviert werden soll - setzt eine Konfigurationsdatei
         //          mit vollständigen SMTP-Parametern und Angabe eines gültigen Passworts voraus
-        // -v, --xmlSerSchemaPath: Pfad zur XSD (Schema) - Datei zur Validierung des serialisierten Schichtplans. Die
-        //          Schema-Datei und shiftplan_serialized.xml müssen nicht unbedingt im gleichen Verzeichnis liegen
-        // -d, --xmlSerialized: Pfad zu shiftplan_serialized.xml - in dieser Datei befindet sich die jeweils aktuelle
-        //          Version des in XML-kodierten Schichtplans
         // -m, --swapData: Swap-Parameter-String der sämtliche Parameter für die Modifikation eines Schichtplans enthält.
         //          Die Swap-Parameter (zur Modifikation des Schichtplans) können entweder mithilfe dieses CLI-Parameters
         //          oder mit einer JSON-Datei (swap_params.json) an das Programm übergeben werden
@@ -408,13 +456,15 @@ public class ShiftPlanRunner {
         //          dieser Datei oder mit der direkten Übergabe der Parameter auf der Kommandozeile erfolgen (bei
         //          entferntem Aufruf des Programms via SSH müssen die Parameter als Kommandozeilen-Parameter übergeben
         //          werden
-        // -q, --query: Erstellung einer Mitarbeiter-Liste, enthaltend die MA-Id, Vorname + Name ('DisplayName)
-        //           und eine Liste der Spätschicht - Kalenderwochenindizes. Die Liste wird in einer Datei gespeichert
-        //           und vom Shiftplan Remote-Tool abgefragt, um Auswahllisten in der GUI mit den MA-Daten zu befüllen
-        // -l, --list: Pfad zur Mitarbeiter-Liste - wird nur berücksichtigt, wenn auch die Option -q (--query)
-        //           angegeben wird
-        // -S:       Startet einen Webserver für den Remote-Zugriff zum Ändern eines Schichtplans
-        // -P:       Startet den Webserver an Port <port>
+        // -w, --webResourcesBasePath: Basispfad für das öffentliche Verzeichnis, in dem sich die Webressourcen befinden
+        // -u, --useJsonShiftlanConfig: Benutze die Datei shiftplan.json anstatt shiftplan.xml als
+        //          Schichtplan-Konfigurationsdatei
+        // -, --createStafflist: Erstelle eine Mitarbeiter-Liste mit den jeweiligen Kalenderwochen für die lokale
+        //          Ausführung
+        // -S:      Startet einen Webserver für den Remote-Zugriff zum Ändern eines Schichtplans. Die Anwendung benutzt
+        //          im Server-Modus die shiftplan.json - Datei zum Lesen und Schreiben der Schichtplan-Konfiguration
+        // -H       Host-Adresse, an die der Server-Socket gebunden wird (localhost, 127.0.0.1 oder 0.0.0.0)
+        // -P:      Startet den Webserver an Port <port>
 
         // Nicht auskommentieren - keine Ausgabe des Passworts in Klartext !!
         // logger.trace("ShiftplanRunner gestartet mit den Argumenten: {}", Arrays.toString(args));
@@ -434,19 +484,23 @@ public class ShiftPlanRunner {
 
         String xmlPath = null;
         String templatePath = null;
-        String outDir = null;
-        String configPath = null;
+        String generatedData = null;
+        String mailConfigPath = null;
         String password = null;
         boolean sendMail = false;
-        String shiftPlanCopyXSDDir = null;
-        String shiftPlanCopyXMLFile = null;
         String swapParamsString = null;
         Path swapParamsFile = null;
-        boolean query = false;
-        String staffListDir = null;
+        String webResourcesBasePath = null;
+        boolean useJsonShiftplanConfig = false;
+        boolean createStafflist = false;
 
         boolean startServer = false;
+        String host = "localhost";
         int port = 8080;
+
+        String shiftPlanCopyXMLFile;
+        String shiftplanJsonFile;
+        String stafflistDir;
 
         Objects.requireNonNull(cmd, "Keine Kommandozeile generiert!");
 
@@ -462,12 +516,12 @@ public class ShiftPlanRunner {
             templatePath = cmd.getOptionValue("t");
         }
 
-        if (cmd.hasOption("o")) {
-            outDir = cmd.getOptionValue("o");
+        if (cmd.hasOption("g")) {
+            generatedData = cmd.getOptionValue("g");
         }
 
-        if (cmd.hasOption("c")) {
-            configPath = cmd.getOptionValue("c");
+        if (cmd.hasOption("e")) {
+            mailConfigPath = cmd.getOptionValue("e");
         }
 
         if (cmd.hasOption("p")) {
@@ -478,76 +532,98 @@ public class ShiftPlanRunner {
             sendMail = true;
         }
 
-        if (cmd.hasOption("v")) {
-            shiftPlanCopyXSDDir = cmd.getOptionValue("v");
-        }
-
-        if (cmd.hasOption("d")) {
-            shiftPlanCopyXMLFile = cmd.getOptionValue("d");
-        }
-
         if (cmd.hasOption("m")) {
             swapParamsString = cmd.getOptionValue("m");
         }
 
         if (cmd.hasOption("j")) {
             swapParamsFile = Path.of(cmd.getOptionValue("j"));
+            Objects.requireNonNull(swapParamsFile, "Ungültiger Wert für Swap-Datei");
+            if (swapParamsFile.toString().isEmpty()) {
+                System.out.println("Ungültiger Wert für Swap-Datei. Das Programm wird beendet");
+                System.exit(1);
+            }
         }
-        if (cmd.hasOption("q")) {
-            query = true;
+
+        if (cmd.hasOption("w")) {
+            webResourcesBasePath = cmd.getOptionValue("w");
+        }
+
+        if (cmd.hasOption("u")) {
+            useJsonShiftplanConfig = Boolean.parseBoolean(cmd.getOptionValue("u"));
         }
 
         if (cmd.hasOption("l")) {
-            staffListDir = cmd.getOptionValue("l");
+            createStafflist = true;
         }
 
         if (cmd.hasOption("S")) {
             startServer = true;
         }
 
-        String val = "";
+        if (cmd.hasOption("H")) {
+            host = cmd.getOptionValue("H");
+        }
+
         if (cmd.hasOption("P")) {
             try {
-                val = cmd.getOptionValue("P");
-                port = Integer.parseInt(val, 10);
-            } catch (NumberFormatException ex) {
-                logger.warn("Ungültiger Wert für Port: {}. Der Default-Wert 8080 wird verwendet.", val);
+                port = cmd.getParsedOptionValue("P");
+            } catch (ParseException e) {
+                throw new ShiftPlanRunnerException(e.getMessage());
             }
         }
 
         logger.info("shiftplan mit folgenden Argumenten aufgerufen:");
         logger.info("xmlPath: {}", xmlPath);
         logger.info("templatePath: {}", templatePath);
-        logger.info("outDir:  {}", outDir);
-        logger.info("configPath: {}", configPath);
+        logger.info("generatedData:  {}", generatedData);
+        logger.info("mailConfigPath: {}", mailConfigPath);
         logger.info("sendMail: {}", sendMail);
-        logger.info("Verzeichnis für XSD-Schema für serialisierten Schichtplan: {}", shiftPlanCopyXSDDir);
-        logger.info("Pfad zu shiftplan_serialized.xml: {}", shiftPlanCopyXMLFile);
         logger.info("Per CLI übergebene Swap-Parameter: {}", swapParamsString);
         logger.info("Per swap_parameter.json übergebene Swap-Parameter: {}", swapParamsFile);
-        logger.info("query: {}", query);
-        logger.info("Pfad zum Mitarbeiter-Verzeichnis: {}", staffListDir);
+        logger.info("webResourcesBasePath: {}", webResourcesBasePath);
+        logger.info("use shiftplan.json: {}", useJsonShiftplanConfig);
+        logger.info("create stafflist: {}", createStafflist);
         logger.info("Anwendung läuft im Web-Server - Modus: {}", startServer);
         if (startServer) {
-            logger.info("Web-Server wird gestartet an Port: {}", port);
+            logger.info("Web-Server an {} wird gestartet an Port: {}", host, port);
+        }
+
+        try {
+            Path genDirPath = createGeneratedDataDir(generatedData);
+            shiftPlanCopyXMLFile = genDirPath.resolve("shiftplan_serialized.xml").toString();
+            shiftplanJsonFile = genDirPath.resolve("shiftplan.json").toString();
+            stafflistDir = generatedData;
+        } catch (IOException e) {
+            throw new ShiftPlanRunnerException(e.getMessage());
         }
 
         if (startServer) {
             new ConfigBundle.ConfigBuilder(
-                    shiftPlanCopyXMLFile, shiftPlanCopyXSDDir)
+                    shiftplanJsonFile, shiftPlanCopyXMLFile, xmlPath)
                     .templateDir(templatePath)
-                    .pdfOutDir(outDir)
-                    .smtpConfigPath(configPath)
+                    .generatedDataDir(generatedData)
+                    .webResourcesBasePath(webResourcesBasePath)
+                    .smtpConfigPath(mailConfigPath)
                     .build();
-            ShiftplanServer.createServer(port);
+            ShiftplanServer.createServer(host, port);
             return;
         }
 
+        if (useJsonShiftplanConfig) {
+            // Es wird ein ConfigBundle mit einem einzigen Parameter (shiftplanJsonConfigFile) erstellt.
+            // Dieses ConfigBundle kann nur bei lokaler Ausführung der Anwendung eingesetzt werden, um shiftplan.json
+            // anstatt shiftplan.xml als Schichtplan-Konfigurationsdatei zu verwenden.
+            new ConfigBundle.ConfigBuilder(shiftplanJsonFile).build();
+        }
+
         ShiftPlanRunner shiftPlanRunner = new ShiftPlanRunner();
-        if (query) {
-            shiftPlanRunner.createStaffList(shiftPlanCopyXMLFile, shiftPlanCopyXSDDir, staffListDir);
+
+        if (createStafflist) {
+            shiftPlanRunner.createStaffList(shiftPlanCopyXMLFile, xmlPath, stafflistDir);
             return;
         }
+
         SwapParams swapParams;
         try {
             if (swapParamsString != null && !swapParamsString.isEmpty()) {
@@ -557,24 +633,26 @@ public class ShiftPlanRunner {
             } else {
                 swapParams = shiftPlanRunner.getOperationalParams();
             }
-            Map<String, Object> dataModel;
+
             if (swapParams.getMode() == OP_MODE.CREATE) {
-                dataModel = shiftPlanRunner.createShiftPlan(xmlPath, shiftPlanCopyXMLFile, swapParams);
+                shiftPlanRunner.createShiftPlan(xmlPath, shiftPlanCopyXMLFile, swapParams);
             } else {
-                dataModel = shiftPlanRunner.modifyShiftPlan(shiftPlanCopyXMLFile, shiftPlanCopyXSDDir, swapParams);
+                shiftPlanRunner.modifyShiftPlan(shiftPlanCopyXMLFile, xmlPath, swapParams);
             }
-            Path attachment = shiftPlanRunner.createPDF(templatePath, dataModel, outDir);
+
+            Map<String, Object> dataModel = shiftPlanRunner.getShiftplanCopy(shiftPlanCopyXMLFile, xmlPath);
+            Path attachment = shiftPlanRunner.createPDF(templatePath, dataModel, generatedData);
             logger.info("Neuer Schichtplan in '{}' gespeichert", attachment.toString());
 
             if (sendMail) {
                 if (password != null && !password.isBlank()) {
                     Employee[] employees = (Employee[]) dataModel.get("employees");
-                    EmailDispatch emailDispatch = new EmailDispatch(configPath);
+                    EmailDispatch emailDispatch = new EmailDispatch(mailConfigPath);
                     emailDispatch.sendMail(List.of(employees), attachment, password);
                 }
             }
         } catch (IOException ex) {
-            logger.fatal("XML/XSD-Datei kamm nicht gelesen oder geschrieben werden", ex);
+            logger.fatal("XML/XSD-Datei kann nicht gelesen oder geschrieben werden", ex);
         } catch (TemplateException ex) {
             logger.fatal("Das FTL-Template kann nicht verarbeitet werden", ex);
         } catch (EmailException ex) {

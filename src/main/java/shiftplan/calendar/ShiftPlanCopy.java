@@ -1,5 +1,7 @@
 package shiftplan.calendar;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import shiftplan.users.Employee;
 
 import java.time.DayOfWeek;
@@ -7,6 +9,8 @@ import java.time.LocalDate;
 import java.util.*;
 
 public class ShiftPlanCopy {
+
+    private static final Logger logger = LogManager.getLogger(ShiftPlanCopy.class);
 
     public record CalendarWeek(int cwIndex, LocalDate[] cwDates) {
         public  static LocalDate[] createCalendarWeekArray(LocalDate from, LocalDate to) {
@@ -20,6 +24,8 @@ public class ShiftPlanCopy {
     private final Employee[] employees;
     private final Map<String, Employee> employeeMap = new HashMap<>();
     private final Map<CalendarWeek, WorkDay[]> calendarWeeks = new TreeMap<>(Comparator.comparing(CalendarWeek::cwIndex));
+
+    private List<ShiftPlanCopy.CalendarWeek> sortedKeys;
 
     private final static ShiftPolicy policy = ShiftPolicy.INSTANCE;
 
@@ -58,6 +64,43 @@ public class ShiftPlanCopy {
     public void addCalendarWeek(CalendarWeek calendarWeek, List<WorkDay> workDays) {
         WorkDay[] workdayArray = workDays.toArray(new WorkDay[0]);
         calendarWeeks.put(calendarWeek, workdayArray);
+    }
+
+    public List<ShiftPlanCopy.CalendarWeek> getSortedKeys() {
+        if (sortedKeys == null) {
+            sortedKeys = new ArrayList<>(calendarWeeks.keySet());
+            sortedKeys.sort(Comparator.comparing(ShiftPlanCopy.CalendarWeek::cwIndex));
+        }
+        return sortedKeys;
+    }
+
+    public Map<Integer, ShiftPlanCopy.WorkDay[]> getSimpleCalenderWeeks() {
+        Map<Integer, ShiftPlanCopy.WorkDay[]> simpleCalendarWeeks = new HashMap<>();
+        List<ShiftPlanCopy.CalendarWeek> sortedKeys = getSortedKeys();
+        sortedKeys.forEach(calendarWeek -> simpleCalendarWeeks.put(calendarWeek.cwIndex(), calendarWeeks.get(calendarWeek)));
+        return simpleCalendarWeeks;
+    }
+
+    public int getMinIndex() {
+        int minIndex = getSortedKeys()
+                .stream()
+                .map(ShiftPlanCopy.CalendarWeek::cwIndex)
+                .mapToInt(Integer::intValue)
+                .min()
+                .orElse(-1);
+        logger.debug("Kleinster Kalenderwochen-Index: {}", minIndex);
+        return minIndex;
+    }
+
+    public int getMaxIndex() {
+        int maxIndex = getSortedKeys()
+                .stream()
+                .map(ShiftPlanCopy.CalendarWeek::cwIndex)
+                .mapToInt(Integer::intValue)
+                .max()
+                .orElse(-1);
+        logger.debug("Größter KalenderWochen-Index: {}", maxIndex);
+        return maxIndex;
     }
 
     public static class WorkDay {

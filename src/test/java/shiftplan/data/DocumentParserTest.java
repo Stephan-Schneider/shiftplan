@@ -3,6 +3,7 @@ package shiftplan.data;
 import org.jdom2.JDOMException;
 import org.junit.jupiter.api.Test;
 import shiftplan.calendar.ShiftPolicy;
+import shiftplan.data.xml.ShiftPlanDescriptor;
 import shiftplan.users.Employee;
 
 import java.io.IOException;

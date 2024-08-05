@@ -6,6 +6,8 @@ import freemarker.template.TemplateException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import shiftplan.calendar.*;
+import shiftplan.users.Employee;
+import shiftplan.web.ConfigBundle;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,8 +19,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ShiftPlanRunnerTest {
 
-    private static final String shiftPlanCopy = "/home/stephan/Projekte/Web/shiftplan_serialized.xml";
-    private static final String getShiftPlanCopyXSD = "/home/stephan/Projekte/Web";
+    private static final String shiftPlanCopy = "/home/stephan/Projekte/Web/generated_data/shiftplan_serialized.xml";
+    private static final String getShiftPlanCopyXSD = "/home/stephan/Projekte/Web/XML";
 
     private SwapParams swapParams;
 
@@ -38,23 +40,26 @@ class ShiftPlanRunnerTest {
                 () -> runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams));
     }
 
-    @Test
+    /* @Test
     void testSwapResult() {
         ShiftPlanRunner runner = new ShiftPlanRunner();
-        Map<String, Object> dataModel = runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams);
+        runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams);
+        Map<String, Object> dataModel = runner.getShiftplanCopy(shiftPlanCopy, getShiftPlanCopyXSD);
+        // SwapResult wird nicht mehr in das dataModel aufgenommen, da das ergebnis nicht im Plan angezeigt wird.
         ShiftSwap.SwapResult swapResult = (ShiftSwap.SwapResult) dataModel.get("swapResult");
         assertAll(
                 () -> assertEquals(OP_MODE.SWAP, swapResult.getSwapMode()),
                 () -> assertEquals(1, swapResult.getUndistributedHoA()),
                 () -> assertEquals(2, swapResult.getUndistributedHoB())
         );
-    }
+    } */
 
     @SuppressWarnings("unchecked")
     @Test
     void testConverter() {
         ShiftPlanRunner runner = new ShiftPlanRunner();
-        Map<String, Object> dataModel = runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams);
+        runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams);
+        Map<String, Object> dataModel = runner.getShiftplanCopy(shiftPlanCopy, getShiftPlanCopyXSD);
         Map<String, Shift> shiftPlan = (Map<String, Shift>) dataModel.get("shiftPlan");
         LocalDate testDate = LocalDate.of(2023, 4,3);
         LocalDate testDate2 = LocalDate.of(2023,4,4);
@@ -70,26 +75,72 @@ class ShiftPlanRunnerTest {
     void testModifyPlan() {
         ShiftPlanRunner runner = new ShiftPlanRunner();
         SwapParams swapParams = runner.getOperationalParams();
-        Map<String, Object> dataModel = runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams);
+        runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams);
+        Map<String, Object> dataModel =runner.getShiftplanCopy(shiftPlanCopy, getShiftPlanCopyXSD);
+                assertNotNull(dataModel);
+    }
 
-        assertNotNull(dataModel);
+    @Test
+    void testGetShiftplanCopy() {
+        ShiftPlanRunner runner = new ShiftPlanRunner();
+        Map<String, Object> dataModel = runner.getShiftplanCopy(shiftPlanCopy, getShiftPlanCopyXSD);
+        assertAll("Test getShiftplanCopy",
+                () -> assertTrue(dataModel.containsKey("startDate")),
+                () -> assertEquals(7, ((Employee[]) dataModel.get("employees")).length)
+        );
+    }
+
+    @Test
+    void testGetShiftplanCopyAndCreatePDF() throws TemplateException, IOException {
+        ShiftPlanRunner runner = new ShiftPlanRunner();
+        Map<String, Object> dataModel = runner.getShiftplanCopy(shiftPlanCopy, getShiftPlanCopyXSD);
+        Path pdfPath = runner.createPDF(
+                "/home/stephan/Projekte/Web/Template",
+                dataModel,
+                "/home/stephan/Projekte/Web"
+        );
+        assertNotNull(pdfPath);
     }
 
     @Test
     void testCreatePlanWithPDF() throws TemplateException, IOException {
         ShiftPlanRunner runner = new ShiftPlanRunner();
         SwapParams swapParams = runner.getOperationalParams("CREATE");
-        Map<String, Object> dataModel = runner.createShiftPlan(null, shiftPlanCopy, swapParams);
+        runner.createShiftPlan(null, shiftPlanCopy, swapParams);
+        Map<String, Object> dataModel = runner.getShiftplanCopy(shiftPlanCopy, getShiftPlanCopyXSD);
         Path attachment = runner.createPDF(null, dataModel, System.getProperty("user.home"));
+        assertNotNull(attachment);
+    }
+
+    @Test
+    void testCreatePlanWithJson() throws TemplateException, IOException {
+        String basePath = "/home/stephan/Projekte/Web/";
+        new ConfigBundle.ConfigBuilder(
+                basePath + "generated_data/shiftplan.json")
+                .shiftPlanCopyXMLFile(basePath + "generated_data/shiftplan_serialized.xml")
+                .templateDir(basePath + "Template")
+                .generatedDataDir(basePath + "generated_data")
+                .build();
+        ConfigBundle bundle = ConfigBundle.INSTANCE;
+
+        ShiftPlanRunner runner = new ShiftPlanRunner();
+        SwapParams swapParams = runner.getOperationalParams("CREATE");
+        runner.createShiftPlan(null, bundle.getShiftPlanCopyXMLFile(), swapParams);
+        Map<String, Object> dataModel = runner.getShiftplanCopy(shiftPlanCopy, getShiftPlanCopyXSD);
+        Path attachment = runner.createPDF(bundle.getTemplateDir(), dataModel, bundle.getGeneratedDataDir());
         assertNotNull(attachment);
     }
 
     @Test
     void testModifyWithPDF() throws TemplateException, IOException {
         ShiftPlanRunner runner = new ShiftPlanRunner();
-        SwapParams swapParams = runner.getOperationalParams();
-        Map<String, Object> dataModel = runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams);
-        Path attachment = runner.createPDF(null, dataModel, System.getProperty("user.home"));
+        SwapParams swapParams = runner.getOperationalParams(Path.of("/home/stephan/Projekte/Web/swap_params.json"));
+        runner.modifyShiftPlan(shiftPlanCopy, getShiftPlanCopyXSD, swapParams);
+        Map<String, Object> dataModel = runner.getShiftplanCopy(shiftPlanCopy, getShiftPlanCopyXSD);
+        Path attachment = runner.createPDF(
+                "/home/stephan/Projekte/Web/Template",
+                dataModel,
+                "/home/stephan/Projekte/Web");
         assertNotNull(attachment);
     }
 }

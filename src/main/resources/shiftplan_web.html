@@ -1,0 +1,2751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Schichtplan Luftfracht Export</title>
+
+    <script>
+        let navLinks;
+
+        function init() {
+            navLinks = document.getElementsByTagName("a");
+
+            for (let link of navLinks) {
+                link.addEventListener("click", toggleDisplay);
+            }
+        }
+
+
+        function toggleDisplay(evt) {
+            evt.preventDefault();
+            // Link-Id's (<a id="...">): link-legend|shiftplan|homeoffice
+            // Section-Id's (section id="..."): legend|shiftplan|homeoffice-section
+            const clickedLinkId = evt.currentTarget.id;
+            const sectionId = clickedLinkId.substring(clickedLinkId.indexOf("-") +1) + "-section";
+            const targetElement = document.getElementById(sectionId)
+            const currentDisplayState = window.getComputedStyle(targetElement).getPropertyValue("display");
+            if (currentDisplayState === "none") {
+                targetElement.style.display = "block";
+            } else {
+                targetElement.style.display = "none";
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", init);
+    </script>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            /*height: auto;*/
+            font-size: 1.0em;
+            background-color: #fff;
+        }
+
+        nav {
+            margin: 0 0 0 100px;
+        }
+
+        nav a:link {
+            display: inline-block;
+            color: black;
+            border: 1px solid black;
+            padding: 3px;
+            width: 150px;
+            text-decoration: none;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        nav a:visited {
+            color: black;
+            border: 1px solid black;
+            text-decoration: none;
+        }
+
+        #legend-section {
+            display: none;
+        }
+
+        #shiftplan-section {
+            display: none;
+        }
+
+        #homeoffice-section {
+            display: none;
+        }
+
+        main {
+            margin: 50px 100px 50px 100px;
+            height: auto;
+        }
+
+        header {
+            margin: 50px 100px 0 100px;
+        }
+
+        section.legend {
+            margin-bottom: 50px;
+        }
+
+        section.legend > h2 {
+            font-size: 1.1em;
+        }
+
+        #employee-details {
+            float: left;
+        }
+
+        #employee-details th {
+            text-align: left;
+            padding: 3px;
+        }
+
+        #shift-info {
+            margin-left: 100px;
+            float: left;
+        }
+
+        #shift-info td.left {
+            font-weight: bold;
+        }
+
+        div.clear-float {
+            clear: left;
+        }
+
+        #shiftplan {
+            width: 100%;
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+
+        #shiftplan thead {
+            display: table-header-group;
+        }
+
+        /*#shiftplan tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }*/
+
+        #shiftplan > thead th {
+            padding: 5px;
+            border: 1px solid black;
+        }
+
+        #shiftplan .sub-header {
+            font-weight: normal;
+            font-size: 1.1em;
+        }
+
+        #shiftplan > tbody tr:nth-child(odd) {
+            background-color: #fff;
+        }
+
+        #shiftplan > tbody tr:nth-child(even) {
+            background-color: #ddd;
+        }
+
+        #shiftplan > tbody th {
+            padding: 5px;
+            /*font-size: 0.9em;*/
+            font-weight: normal;
+            border: 1px solid black;
+        }
+
+        #shiftplan > tbody td {
+            padding: 5px;
+            font-size: 1.1em;
+            border: 1px solid black;
+        }
+
+        #shiftplan > tbody td > ul {
+            margin: 0 0 0 10px;
+            padding-left: 5px;
+            list-style-type: square;
+        }
+
+        #shiftplan .small {
+            font-size: small;
+        }
+
+        section.homeoffice-control-section {
+            margin-top: 100px;
+        }
+
+        .homeoffice-control-caption {
+            page-break-before: always;
+            margin-bottom: 5px;
+            border-bottom: 1px solid silver;
+            font-style: italic;
+        }
+
+        #homeoffice-control,#undistributedHo {
+            width: 50%;
+            margin: 15px auto 0 auto;
+            border: 1px solid black;
+            border-collapse: collapse;
+            page-break-inside: auto;
+        }
+
+        #homeoffice-control thead {
+            display: table-header-group;
+        }
+
+        #homeoffice-control tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+
+        #homeoffice-control > thead th {
+            padding: 5px;
+            border: 1px solid black;
+        }
+
+        #homeoffice-control > tbody tr:nth-child(odd) {
+            background-color: #fff;
+        }
+
+        #homeoffice-control > tbody tr:nth-child(even) {
+            background-color: #ddd;
+        }
+
+        #homeoffice-control > tbody th {
+            padding: 5px;
+            font-size: 0.9em;
+            font-weight: normal;
+            border: 1px solid black;
+        }
+
+        #homeoffice-control > tbody td {
+            padding: 5px;
+            font-size: 0.8em;
+            border: 1px solid black;
+        }
+
+        #undistributedHo thead {
+            display: table-header-group;
+        }
+
+        #undistributedHo tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+
+        #undistributedHo thead th {
+            padding: 5px;
+            font-size: 0.8em;
+            font-weight: normal;
+            border: 1px solid black;
+        }
+
+        /*#undistributedHo > tbody th {
+            padding: 5px;
+            font-size: 0.9em;
+            font-weight: normal;
+            border: 1px solid black;
+        }*/
+
+        #undistributedHo tbody td {
+            padding: 5px;
+            font-size: 0.8em;
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Schichtplan Luftfracht Export vom 01.07.2024 bis 31.12.2024</h1>
+</header>
+<nav>
+    <a href="#" id="link-legend" class="nav-link">Legende</a>
+    <a href="#" id="link-shiftplan" class="nav-link">Schichtplan</a>
+    <a href="#" id="link-homeoffice" class="nav-link">HO-Zuweisungen</a>
+</nav>
+<main>
+    <section id="legend-section" class="legend">
+        <h2>Legende</h2>
+        <table id="employee-details">
+            <thead>
+            <tr>
+                <th>Mitarbeiter</th>
+                <th>Teilnahme</th>
+                <th>Backups</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td style="color: #ff3344;">Rudi Ratlos</td>
+                <td>                            H+S
+                </td>
+                <td>Mia Maus,Tommi Tulpe</td>
+            </tr>
+            <tr>
+                <td style="color: #1a5fb4;">Heinz Maier</td>
+                <td>                            H+S
+                </td>
+                <td>Hola Hurtig,Rudi Rüssel</td>
+            </tr>
+            <tr>
+                <td style="color: #e5a50a;">Mia Maus</td>
+                <td>                            H+S
+                </td>
+                <td>Rudi Ratlos,Beppo Grillo</td>
+            </tr>
+            <tr>
+                <td style="color: #63452c;">Hola Hurtig</td>
+                <td>                            H+S
+                </td>
+                <td>Heinz Maier,Rudi Rüssel</td>
+            </tr>
+            <tr>
+                <td style="color: #f8e45c;">Rudi Rüssel</td>
+                <td>                            S
+                </td>
+                <td>Heinz Maier,Hola Hurtig</td>
+            </tr>
+            <tr>
+                <td style="color: #99c1f1;">Tommi Tulpe</td>
+                <td>                            H
+                </td>
+                <td>Rudi Ratlos,Beppo Grillo</td>
+            </tr>
+            <tr>
+                <td style="color: #813d9c;">Beppo Grillo</td>
+                <td>                            H
+                </td>
+                <td>Mia Maus,Tommi Tulpe</td>
+            </tr>
+            </tbody>
+        </table>
+        <table id="shift-info">
+            <tbody>
+            <tr>
+                <td class="left">Dauer Spätschicht-Zyklus:</td>
+                <td>4 Tage</td>
+            </tr>
+            <tr>
+                <td class="left">Anzahl Homeoffice-Stellen:</td>
+                <td>3 MA's pro Tag</td>
+            </tr>
+            <tr>
+                <td class="left">Anzahl Homeoffice-Tage:</td>
+                <td>3 Tage pro MA / Woche</td>
+            </tr>
+            <tr>
+                <td class="left">Max. Anzahl von HO-Tagen:</td>
+                <td>10 Tage pro Monat</td>
+            </tr>
+            <tr>
+                <td class="left">Max. Anzahl aufeinanderfolgender HO-Tage:</td>
+                <td>2 Tage</td>
+            </tr>
+            <tr>
+                <td class="left">Mindestdauer der HO-Sperre nach 2 Tagen:</td>
+                <td>2 Tage</td>
+            </tr>
+            </tbody>
+        </table>
+        <div class="clear-float"></div>
+    </section>
+    <section id="shiftplan-section">
+        <table id="shiftplan">
+            <thead>
+            <tr>
+                <th>KW</th>
+                <th>Von -> Bis</th>
+                <th colspan="2">Montag</th>
+                <th colspan="2">Dienstag</th>
+                <th colspan="2">Mittwoch</th>
+                <th colspan="2">Donnerstag</th>
+                <th colspan="2">Freitag</th>
+            </tr>
+            <tr>
+                <th></th>
+                <th></th>
+                <th class="sub-header">Home Office</th>
+                <th class="sub-header">Spätdienst</th>
+                <th class="sub-header">Home Office</th>
+                <th class="sub-header">Spätdienst</th>
+                <th class="sub-header">Home Office</th>
+                <th class="sub-header">Spätdienst</th>
+                <th class="sub-header">Home Office</th>
+                <th class="sub-header">Spätdienst</th>
+                <th class="sub-header">Home Office</th>
+                <th class="sub-header">Spätdienst</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>27</td>
+                <td>01.07. - 07.07.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+            </tr>
+            <tr>
+                <td>28</td>
+                <td>08.07. - 14.07.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+            </tr>
+            <tr>
+                <td>29</td>
+                <td>15.07. - 21.07.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+            </tr>
+            <tr>
+                <td>30</td>
+                <td>22.07. - 28.07.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+            </tr>
+            <tr>
+                <td>31</td>
+                <td>29.07. - 04.08.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+            </tr>
+            <tr>
+                <td>32</td>
+                <td>05.08. - 11.08.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+            </tr>
+            <tr>
+                <td>33</td>
+                <td>12.08. - 18.08.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+            </tr>
+            <tr>
+                <td>34</td>
+                <td>19.08. - 25.08.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+            </tr>
+            <tr>
+                <td>35</td>
+                <td>26.08. - 01.09.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+            </tr>
+            <tr>
+                <td>36</td>
+                <td>02.09. - 08.09.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+            </tr>
+            <tr>
+                <td>37</td>
+                <td>09.09. - 15.09.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+            </tr>
+            <tr>
+                <td>38</td>
+                <td>16.09. - 22.09.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+            </tr>
+            <tr>
+                <td>39</td>
+                <td>23.09. - 29.09.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+            </tr>
+            <tr>
+                <td>40</td>
+                <td>30.09. - 06.10.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td colspan="2">Kein Arbeitstag</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+            </tr>
+            <tr>
+                <td>41</td>
+                <td>07.10. - 13.10.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+            </tr>
+            <tr>
+                <td>42</td>
+                <td>14.10. - 20.10.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+            </tr>
+            <tr>
+                <td>43</td>
+                <td>21.10. - 27.10.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+            </tr>
+            <tr>
+                <td>44</td>
+                <td>28.10. - 03.11.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+            </tr>
+            <tr>
+                <td>45</td>
+                <td>04.11. - 10.11.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+            </tr>
+            <tr>
+                <td>46</td>
+                <td>11.11. - 17.11.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+            </tr>
+            <tr>
+                <td>47</td>
+                <td>18.11. - 24.11.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+            </tr>
+            <tr>
+                <td>48</td>
+                <td>25.11. - 01.12.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+            </tr>
+            <tr>
+                <td>49</td>
+                <td>02.12. - 08.12.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #1a5fb4">
+                    Heinz
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+            </tr>
+            <tr>
+                <td>50</td>
+                <td>09.12. - 15.12.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #e5a50a">
+                    Mia
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+            </tr>
+            <tr>
+                <td>51</td>
+                <td>16.12. - 22.12.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #63452c">
+                    Hola
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #ff3344">Rudi</span></li>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+            </tr>
+            <tr>
+                <td>52</td>
+                <td>23.12. - 29.12.</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                >
+                    <span class="small">Keine Spätschicht</span>
+                </td>
+                <td>
+                    <ul>
+                        <li><span style="color: #e5a50a">Mia</span></li>
+                        <li><span style="color: #63452c">Hola</span></li>
+                        <li><span style="color: #99c1f1">Tommi</span></li>
+                    </ul>
+                </td>
+                <td
+                        style="color: #f8e45c">
+                    Rudi
+                </td>
+                <td colspan="2">Kein Arbeitstag</td>
+                <td colspan="2">Kein Arbeitstag</td>
+                <td>
+                    <ul>
+                        <li><span style="color: #1a5fb4">Heinz</span></li>
+                        <li><span style="color: #813d9c">Beppo</span></li>
+                        <span class="small">Nicht besetzt</span><br>
+                    </ul>
+                </td>
+                <td
+                        style="color: #ff3344">
+                    Rudi
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+    <section id="homeoffice-section" class="homeoffice-control-section">
+        <table id="homeoffice-control">
+            <caption class="homeoffice-control-caption">
+                <h4>Evaluierung der Homeoffice-Zuteilungen vom 01.07.2024 bis 31.12.2024</h4>
+            </caption>
+            <thead>
+            <tr>
+                <th>Monat</th>
+                <th>Name</th>
+                <th>HO-Tage im Plan</th>
+                <th>Nicht zugewiesene HO-Tage</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>Juli</td>
+                <td>Rudi Ratlos</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Heinz Maier</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Mia Maus</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Hola Hurtig</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Rudi Rüssel</td>
+                <td >
+                    0 Tage
+                </td>
+                <td >
+                    10 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Tommi Tulpe</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Beppo Grillo</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Rudi Ratlos</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Heinz Maier</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Mia Maus</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Hola Hurtig</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Rudi Rüssel</td>
+                <td >
+                    0 Tage
+                </td>
+                <td >
+                    10 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Tommi Tulpe</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Juli</td>
+                <td>Beppo Grillo</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Rudi Ratlos</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Heinz Maier</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Mia Maus</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Hola Hurtig</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Rudi Rüssel</td>
+                <td >
+                    0 Tage
+                </td>
+                <td >
+                    10 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Tommi Tulpe</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Beppo Grillo</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Rudi Ratlos</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Heinz Maier</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Mia Maus</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Hola Hurtig</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Rudi Rüssel</td>
+                <td >
+                    0 Tage
+                </td>
+                <td >
+                    10 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Tommi Tulpe</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>August</td>
+                <td>Beppo Grillo</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Rudi Ratlos</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Heinz Maier</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Mia Maus</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Hola Hurtig</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Rudi Rüssel</td>
+                <td >
+                    0 Tage
+                </td>
+                <td >
+                    10 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Tommi Tulpe</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Beppo Grillo</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Rudi Ratlos</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Heinz Maier</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Mia Maus</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Hola Hurtig</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Rudi Rüssel</td>
+                <td >
+                    0 Tage
+                </td>
+                <td >
+                    10 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Tommi Tulpe</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>September</td>
+                <td>Beppo Grillo</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Rudi Ratlos</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Heinz Maier</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Mia Maus</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Hola Hurtig</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Rudi Rüssel</td>
+                <td >
+                    0 Tage
+                </td>
+                <td >
+                    10 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Tommi Tulpe</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Beppo Grillo</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Rudi Ratlos</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Heinz Maier</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Mia Maus</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Hola Hurtig</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Rudi Rüssel</td>
+                <td >
+                    0 Tage
+                </td>
+                <td >
+                    10 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Tommi Tulpe</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Oktober</td>
+                <td>Beppo Grillo</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Rudi Ratlos</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Heinz Maier</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Mia Maus</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Hola Hurtig</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Rudi Rüssel</td>
+                <td >
+                    0 Tage
+                </td>
+                <td >
+                    10 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Tommi Tulpe</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Beppo Grillo</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Rudi Ratlos</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Heinz Maier</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Mia Maus</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Hola Hurtig</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Rudi Rüssel</td>
+                <td >
+                    0 Tage
+                </td>
+                <td >
+                    10 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Tommi Tulpe</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>November</td>
+                <td>Beppo Grillo</td>
+                <td style="color: green">
+                    10 Tage
+                </td>
+                <td style="color: green">
+                    0 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Rudi Ratlos</td>
+                <td >
+                    7 Tage
+                </td>
+                <td >
+                    3 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Heinz Maier</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Mia Maus</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Hola Hurtig</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Rudi Rüssel</td>
+                <td >
+                    0 Tage
+                </td>
+                <td >
+                    10 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Tommi Tulpe</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Beppo Grillo</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Rudi Ratlos</td>
+                <td >
+                    7 Tage
+                </td>
+                <td >
+                    3 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Heinz Maier</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Mia Maus</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Hola Hurtig</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Rudi Rüssel</td>
+                <td >
+                    0 Tage
+                </td>
+                <td >
+                    10 Tage
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Tommi Tulpe</td>
+                <td >
+                    9 Tage
+                </td>
+                <td >
+                    1 Tag
+                </td>
+            </tr>
+            <tr>
+                <td>Dezember</td>
+                <td>Beppo Grillo</td>
+                <td >
+                    8 Tage
+                </td>
+                <td >
+                    2 Tage
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

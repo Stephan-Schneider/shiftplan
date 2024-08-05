@@ -1,4 +1,4 @@
-package shiftplan.data;
+package shiftplan.data.xml;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -7,6 +7,8 @@ import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.JDOMException;
 import shiftplan.ShiftPlanRunnerException;
+import shiftplan.data.IShiftplanDescriptor;
+import shiftplan.data.InvalidShiftPlanException;
 import shiftplan.users.Employee;
 
 import java.io.IOException;
@@ -18,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class ShiftPlanDescriptor {
+public class ShiftPlanDescriptor implements IShiftplanDescriptor {
 
     private static final Logger logger = LogManager.getLogger(ShiftPlanDescriptor.class);
 

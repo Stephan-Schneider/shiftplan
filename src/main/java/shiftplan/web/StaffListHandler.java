@@ -24,7 +24,7 @@ public class StaffListHandler implements HttpHandler {
     public void handleRequest(HttpServerExchange exchange) throws Exception {
         try {
             String content = getStaffList();
-            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain; charset=utf-8");
+            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json; charset=utf-8");
             exchange.getResponseSender().send(content);
         } catch (Exception e) {
             exchange.setStatusCode(500);
@@ -41,7 +41,7 @@ public class StaffListHandler implements HttpHandler {
 
             StaffList staffList = new StaffList(copy);
             Map<String, StaffList.StaffData> employeeMap = staffList.createStaffList();
-            return staffList.printStaffList(employeeMap);
+            return staffList.serializeStaffList(employeeMap);
         } catch (NullPointerException | IllegalArgumentException e) {
             logger.fatal("Ungültiger Pfadangaben zur Schichtplankopie oder Schemadatei oder copy = null", e);
             throw new ShiftPlanSwapException(e.getMessage());

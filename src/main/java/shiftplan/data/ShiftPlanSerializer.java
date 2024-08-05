@@ -9,6 +9,7 @@ import shiftplan.calendar.Shift;
 import shiftplan.calendar.ShiftPlanCopy;
 import shiftplan.calendar.ShiftPolicy;
 import shiftplan.calendar.ShiftSwapDataModelConverter;
+import shiftplan.data.xml.DocumentParser;
 import shiftplan.users.Employee;
 
 import java.io.BufferedWriter;
@@ -36,7 +37,7 @@ public class ShiftPlanSerializer {
 
     /**
      * ShiftPlanSerializer in Write-Only - Modus.
-     *
+
      * Der Target - OutputStream wird als Parameter bei aufruf von
      * <code>serializer.writeXML(Document doc, OutputStream out)</code> angegeben
      */
@@ -69,9 +70,7 @@ public class ShiftPlanSerializer {
      * @param xmlFile Pfad zur XML-Datei, in die die Objekt-Repräsentation des Schichtplans geschrieben wird
      */
     public ShiftPlanSerializer(Path xmlFile) {
-        if (!Files.exists(xmlFile) || !Files.isRegularFile(xmlFile) || !Files.isReadable(xmlFile)) {
-            throw new IllegalArgumentException("Ungültige oder nicht existierende Xml-Datei!");
-        }
+        Objects.requireNonNull(xmlFile, "Serialisierter Schichtplan (shiftplan_serialized.xml) fehlt!");
         this.xmlFile = xmlFile;
     }
 
@@ -83,18 +82,19 @@ public class ShiftPlanSerializer {
      *               die zur Validierung der XML - Datendatei (shiftplan_serialized.xml) verwendet wird.
      */
     public ShiftPlanSerializer(Path xmlFile, Path xsdDir) {
-        if (!Files.exists(xmlFile) || !Files.isRegularFile(xmlFile) || !Files.isReadable(xmlFile)) {
-            throw new IllegalArgumentException("Ungültige oder nicht existierende Xml-Datei!");
-        }
+        Objects.requireNonNull(xmlFile, "Serialisierter Schichtplan (shiftplan_serialized.xml) fehlt!");
+        Objects.requireNonNull(xsdDir, "XML-Verzeichnis fehlt!");
 
         Path xsdFile = xsdDir.resolve("shiftplan_serialized.xsd");
-
-        if (!Files.exists(xsdFile) || !Files.isRegularFile(xsdFile) || !Files.isReadable(xsdFile)) {
-            throw new IllegalArgumentException("Ungültiger Pfad zur XML-Schema - Datei");
-        }
-
         this.xmlFile = xmlFile;
         this.xsdFile = xsdFile;
+    }
+
+    private boolean isValidFile(Path file) throws IllegalArgumentException {
+        if (!Files.exists(file) || !Files.isRegularFile(file) || !Files.isReadable(file)) {
+            throw new IllegalArgumentException("Ungültige oder nicht existierende Xml|XSD-Datei: " + file + "!");
+        }
+        return true;
     }
 
     public Document serializeShiftPlan(ShiftSwapDataModelConverter converter) {
@@ -266,6 +266,12 @@ public class ShiftPlanSerializer {
     }
 
     public ShiftPlanCopy deserializeShiftplan() throws IOException, JDOMException {
+        // Die Dateien shiftplan_serialized.xml und shiftplan_serialized.xsd müssen existieren und gelesen werden können.
+        boolean isValidXML = isValidFile(xmlFile);
+        boolean isValidXSD = isValidFile(xsdFile);
+        logger.info("shiftplan_serialized_xml und shiftplan_serialized.xsd existieren und sind lesbar: {}, {}",
+                isValidXML, isValidXSD);
+
         DocumentParser documentParser = new DocumentParser(xmlFile, xsdFile);
         Document doc = documentParser.getXMLDocument();
 

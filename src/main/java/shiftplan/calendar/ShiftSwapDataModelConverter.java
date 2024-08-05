@@ -11,11 +11,9 @@ import java.util.TreeMap;
 public class ShiftSwapDataModelConverter {
 
     private final ShiftPlanCopy copy;
-    private final ShiftSwap swapper;
 
-    public ShiftSwapDataModelConverter(ShiftPlanCopy copy, ShiftSwap swapper) {
+    public ShiftSwapDataModelConverter(ShiftPlanCopy copy) {
         this.copy = Objects.requireNonNull(copy);
-        this.swapper = Objects.requireNonNull(swapper);
     }
 
     public static Map<String, Integer> getShiftInfo()  {
@@ -49,7 +47,7 @@ public class ShiftSwapDataModelConverter {
 
     public Map<String, Shift> getShiftPlan() {
         Map<String, Shift> shiftPlan = new HashMap<>();
-        Map<Integer, ShiftPlanCopy.WorkDay[]> calendar = swapper.getSimpleCalendarWeeks();
+        Map<Integer, ShiftPlanCopy.WorkDay[]> calendar = copy.getSimpleCalenderWeeks();
         calendar.values().forEach(workDays -> {
             for (ShiftPlanCopy.WorkDay workDay : workDays) {
                 LocalDate date = workDay.getDate();
@@ -64,7 +62,7 @@ public class ShiftSwapDataModelConverter {
 
     public Map<Integer, LocalDate[]> getCalendar() {
         Map<Integer, LocalDate[]> calendar = new TreeMap<>(Integer::compareTo);
-        swapper.getCalendarWeeks().forEach( calendarWeek -> calendar.put(calendarWeek.cwIndex(), calendarWeek.cwDates()));
+        copy.getSortedKeys().forEach( calendarWeek -> calendar.put(calendarWeek.cwIndex(), calendarWeek.cwDates()));
         return calendar;
     }
 }

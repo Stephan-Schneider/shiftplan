@@ -1,4 +1,4 @@
-package shiftplan.data;
+package shiftplan.data.xml;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -11,6 +11,7 @@ import org.jdom2.input.sax.XMLReaderJDOMFactory;
 import org.jdom2.input.sax.XMLReaderXSDFactory;
 import shiftplan.ShiftPlanRunnerException;
 import shiftplan.calendar.ShiftPolicy;
+import shiftplan.data.IShiftplanDescriptor;
 import shiftplan.users.Employee;
 
 import java.io.File;
@@ -147,13 +148,7 @@ public class DocumentParser {
             employeeList.add(employee);
         });
 
-        for (Employee key : tmpBackupMap.keySet()) {
-            List<String> ids = tmpBackupMap.get(key);
-            List<Employee> backupsForKey = employeeList.stream().filter(employee -> ids.contains(employee.getId())).toList();
-            key.addBackups(backupsForKey);
-            logger.info("MA {} {} mit diesen Backups erstellt: {}", key.getName(), key.getLastName(), key.getBackups());
-        }
-
+        IShiftplanDescriptor.addBackups(employeeList, tmpBackupMap, logger);
         return employeeList.toArray(new Employee[0]);
     }
 }
