@@ -23,20 +23,19 @@ echo "Aktuelles Arbeitsverzeichnis: ${PWD}"
 # Voreingestellte Parameter #
 #############################
 
-# Pfad zum Verzeichnis, in welchem sich shiftplan.xml und shiftplan.xsd befinden - diese beiden Dateien müssen
-# sich immer in gleichen Ordner befinden
+# Pfad zum Verzeichnis, in welchem sich shiftplan.xml, shiftplan.xsd und shiftplan_serialized.sxd befinden - diese
+# Dateien müssen sich immer in gleichen Ordner befinden
 xmlPath=${install_dir}/XML
 
 # Pfad zum Template-Verzeichnis - enthält das FTL-Template 'shiftplan.ftl'
 templatePath=${install_dir}/Template
 
-# Pfad zum Verzeichnis, in dem die generierte Schichtplan-Datei (temporär) als PDF gespeichert wird.
-# Wenn dieser Parameter nicht angegeben wird, speichert die Anwendung den  generierte Schichtplan im voreingestellten
-# Verzeichnis für temporäre Dateien des jeweiligen Betriebssystems.
-outDir=""
+# Pfad zum Verzeichnis, in dem die von der Anwendung generierten Dateien gespeichert werden ((shiftplan.json,
+# shiftplan_serialized.xml, Schichtplan.html|.pdf.)
+generated_data=""
 
 # Pfad zur SMTP-Konfigurationsdatei (enthält SMTP Parameter wie den SMTP-Server des Email-Providers)
-configPath=${install_dir}/mail_config.txt
+mailConfigPath=${install_dir}/mail_config.txt
 
 # Indikator, ob der Schichtplan, direkt nach seiner Erstellung, per Email an die einzelnen Mitarbeiter versendet
 # werden soll
@@ -45,18 +44,6 @@ sendEmail=false
 # Email-Passwort. Bei lokalem Aufruf des Programms über die Shell sollte dieser Parameter NICHT angegeben werden,
 # da das Passwort in Klartext erscheint. Bei lokalem Aufruf den interaktiven Modus verwenden!!!
 smtpPassword=""
-
-# Indikator, ob das Email-Passwort interaktiv auf der Kommandozeile abgefragt werden soll. Diese Option sollte nur
-# angegeben werden, wenn das Programm lokal über die Bash-Shell aufgerufen wird. Wird das Programm durch einen
-# entfernten SSH-Client aufgerufen, sollte das Passwort ohne interaktive Abfrage durch das shiftplan.sh-Skript vom Client
-# übermittelt werden. Im interaktiven Modus wird das Passwort bei der Eingabe maskiert.
-interactive=false
-
-# Pfad zur XML-Schema - Datei, die zur Validierung von shiftplan_serialized.xml verwendet wird
-shiftPlanCopySchemaPath=${install_dir}/XML
-
-# Pfad zur Kopie eines Schichtplans in XML-Format - die XML-Datei hat immer den Namen 'shiftplan_serialized.xml'
-shiftPlanCopyXMLFile=${install_dir}/generated_data/shiftplan_serialized.xml
 
 # Die für die Modifizierung eines Schichtplans (SWAP, REPLACE, CREATE) erforderlichen OP-Parameter als CLI-Args
 # Der Parameter-String muss die einzelnen Parameter in einer festgelegten Reihenfolge enthalten:
@@ -71,47 +58,46 @@ swapData=""
 # durch einen SSH-Client aufgerufen wird, sollten die Parameter als CLI-Args übergeben werden
 swapDataJSON=${install_dir}/swap_data.json
 
-# Indikator, ob eine Mitarbeiter-Liste erstellt werden soll (siehe $staffListDir)
-query=false
+webResourcesPath=""
 
-# Pfad zum Verzeichnis, in welches die von der shiftplan-Anwendung erstellte Mitarbeiter-Liste gespeichert wird.
-# Diese wird durch das Shiftplan Remote-Tool in die GUI geladen, um dem Benutzer Auswahloptionen anzubieten
-# Das Default-Verzeichnis ist /tmp
-staffListDir=/tmp
+createStaffList=false
 
-# Wird <server> auf den Wert <true> gesetzt, startet die Anwendung einen Webserver, der die Anfragen zum Ändern des
-# Schichtplans handelt. Ist der Wert für <server> <false>, wird der Standardverbindungstyp SSH verwendet
+useJsonShiftplanConfig=false
+
+# Wird <server> auf den Wert <true> gesetzt, startet die Anwendung einen Webserver zur Ausführung der Anwendung als
+# Web-Service
 server=false
+
+# Host-Adresse, an die der Server-Socket gebunden wird (localhost|127.0.0.1 oder 0.0.0.0)
+host=localhost
 
 # Port, an welchen der Server gestartet wird.
 port=8080
 
 # shellcheck disable=SC1009
 help() {
-  echo "Skript zum Starten der shiftplan - App"
+  echo "Skript zum Starten der Schichtplan - App"
   echo
-  echo "Aufruf: shiftplan.sh [-h|-x|-t|-o|-c|-s|-p|-i|-v|-d|-m|-j|-q|-l|-S|-P]"
+  echo "Aufruf: shiftplan.sh [-h|-x|-t|-g|-e|-s|-m|-j|-w|-u|-l-S|-H|-P]"
   echo "Optionen:"
   echo "-h  Druckt diese Hilfenachricht"
-  echo "-x  Pfad zum XML-Ordner. Enthält shiftplan.xml und shiftplan.xsd. Obligatorisch, wenn der Ordner außerhalb des Installationsverzeichnis liegt"
+  echo "-x  Pfad zum XML-Ordner. Enthält shiftplan.xml, shiftplan.xsd und shiftplan_serialized.xsd. Obligatorisch, wenn der Ordner außerhalb des Installationsverzeichnis liegt"
   echo "-t  Pfad zum Template-Ordner. Enthält shiftplan.ftl. Obligatorisch, wenn der Ordner außerhalb des Installationsverzeichnis liegt"
-  echo "-o  Pfad zum Speicherort (Verzeichnis) des erstellten Schichtplans. Falls nicht angeben, wird die generierte Datei im Standardverzeichnis für Temp-Dateien des jeweiligen Betriebssystems abgelegt"
-  echo "-c  Pfad zur Konfigurationsdatei (bei Emailversand aus dem Programm) - optional"
+  echo "-g  Pfad zu den von der Anwendung generierten Dateien (shiftplan.json, shiftplan_serialized.xml, Schichtplan.html|.pdf."
+  echo "-e  Pfad zur SMTP-Konfigurationsdatei (bei Emailversand aus dem Programm) - optional"
   echo "-s  sendEmail-Option: nur angeben, wenn Emailversand aktiviert werden soll - setzt eine Konfigurationsdatei mit vollständigen SMTP-Parametern und Angabe eines gültigen Passworts voraus"
-  echo "-p  Email-Passwort. Dieser Parameter ist für Passwortübergabe durch einen entfernten SSH-Client gedacht. Bei lokalem Aufruf den interaktiven Modus benutzen!"
-  echo "-1  Interaktive Passwortabfrage - die Übergabe des Email-Passworts sollte bei lokalem Aufruf des Programms interaktiv erfolgen"
-  echo "-v  Pfad zur Schema-Datei, mit welcher der serialisierte Schichtplan beim Einlesen des XMLs validiert wird"
-  echo "-d  Pfad zur XML-Datei, welche die Kopie des Schichtplans enthält (shiftplan_serialized.xml)"
   echo "-m  Parameter-String, der die für die Modifizierung eines Schichtplans benötigten Parameter in einem festgelegten Format enthält"
   echo "-j  Pfad zur JSON-Datei, welche die zur Modifikation eines Schichtplans benötigten Parameter enthält"
-  echo "-q  query-Option: Nur angeben wenn eine Mitarbeiter-Liste erstellt werden soll"
-  echo "-l  Pfad zum Verzeichnis, das die Datei mit der Mitarbeiter-Liste enthält. Wird nur erstellt, wenn auch die Option -q (query) angegeben wird"
+  echo "-w  Pfad zum öffentlichen Ordner, in dem sich die Webressourcen (HTML-Dateien, in den Browser geladene Skripte etc.) befinden"
+  echo "-u  Benutze die shiftplan.json - Konfigurationsdatei anstatt shiftplan.xml bei lokaler Ausführung der Anwendung"
+  echo "-l  Erstelle eine Mitarbeiter-Liste mit den jeweiligen Spätschicht-Kalenderwochen bei lokaler Ausführung der Anwendung"
   echo "-S  Startet einen Webserver für den Remote-Zugriff zum ändern eines existierenden Schichtplan. Ohne den Parameter '-S' läuft die Verbindung über SSH"
+  echo "-H  Host-Adresse, an die der Server-Socket gebunden wird (localhost|127.0.0.1 oder 0.0.0.0)"
   echo "-P  Port, an welchem der Webserver gestartet wird"
 
 }
 
-while getopts "hx:t:o:c:sp:iv:d:m:j:ql:SP:" option 2>/dev/null; do
+while getopts "hx:t:g:e:sm:j:w:ulSH:P:" option 2>/dev/null; do
   case $option in
   h) # Hilfe-Text ausgeben
     help
@@ -120,30 +106,26 @@ while getopts "hx:t:o:c:sp:iv:d:m:j:ql:SP:" option 2>/dev/null; do
     xmlPath=$OPTARG;;
   t) # Template-Pfad
     templatePath=$OPTARG;;
-  o) # Verzeichnis für die generierte Schichtplan-Datei
-    outDir=$OPTARG;;
-  c) # Pfad zur SMTP-Konfigurationsdatei
-    configPath=$OPTARG;;
+  g) # Verzeichnis für die generierten Dateien
+    generated_data=$OPTARG;;
+  e) # Pfad zur SMTP-Konfigurationsdatei
+    mailConfigPath=$OPTARG;;
   s) # Emailversand aktivieren (Ja, falls Parameter angegeben)
     sendEmail=true;;
-  p) # SMTP-Passwort
-    smtpPassword=$OPTARG;;
-  i) # Interaktive Email-Passwortabfrage bei lokalem Aufruf des Programms
-    interactive=true;;
-  v) # Pfad zum Verzeichnis, welches die Schema-Datei für die XML-Schichtplankopie enthält
-    shiftPlanCopySchemaPath=$OPTARG;;
-  d) # Pfad zur XML-Datei, die den Schichtplan in XML-Format enthält
-    shiftPlanCopyXMLFile=$OPTARG;;
   m) # Operations-Parameter für das Ändern eines Schichtplans (Schichttausch)
     swapData=$OPTARG;;
   j) # Pfad zur JSON-Datei mit den Operations-Parametern für das Ändern eines Schichtplans (Schichttausch)
     swapDataJSON=$OPTARG;;
-  q) # Mitarbeiter-Liste erstellen
-    query=true;;
-  l) # Pfad zum Verzeichnis der Mitarbeiter-Liste
-    staffListDir=$OPTARG;;
+  w) # Pfad zum public-Ordner (Webanwendung)
+    webResourcesPath=$OPTARG;;
+  u) # Benutze shiftplan.json anstatt shiftplan.xml (lokale Ausführung)
+    useJsonShiftplanConfig=true;;
+  l) # Erstelle eine Mitarbeiter-Liste (lokale Ausführung)
+    createStaffList=true;;
   S) # Starten des Web-Servers
     server=true;;
+  H) # Host-Parameter
+    host=$OPTARG;;
   P) # Http-Port
     port=$OPTARG;;
   *) # Ungültige Option
@@ -155,32 +137,27 @@ done
 
 echo "Starten der shiftplan - Anwendung aus Verzeichnis ${install_dir} ..."
 
-### java muss mit dem absolutem Pfad aufgerufen werden !!
-### Grund: Bei entferntem Zugriff auf shiftplan.sh via ssh wird eine nicht-interaktive Shell kreiert, die Pfad- und
-### JAVA_HOME-Variabeln in .profile werden nicht in den Speicher geladen, was dazu führt, dass eventuell eine andere
-### als die intendierte Version des JDK's gestartet wird und Versions-Konflikte auftreten.
-
-if [ "$query" = true ]; then
-    /opt/java/jdk-21.0.1+12/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -v "$shiftPlanCopySchemaPath" \
-    -d "$shiftPlanCopyXMLFile" -q -l "$staffListDir"
+if [ "$createStaffList" = true ]; then
+    java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -l -x "$xmlPath" \
+    -g "$generated_data"
     exit 0 # Skript stoppen - keine weitere Aktion erforderlich oder sinnvoll
 fi
 
-if [ "$sendEmail" = true ] && [ "$interactive" = true ]; then
+if [ "$sendEmail" = true ]; then
     echo "Bitte das Passwort für den Email-Account des Absenders eingeben:"
     read -s -r smtpPassword
     # echo "$smtpPassword"
 fi
 
-if [ "$server" = true ]; then
-    /opt/java/jdk-21.0.1+12/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner \
-    -S -P "$port" -x "$xmlPath" -t "$templatePath" -o "$outDir" -c "$configPath" -v "$shiftPlanCopySchemaPath" \
-    -d "$shiftPlanCopyXMLFile"
-elif [ "$sendEmail" = true ]; then
-  /opt/java/jdk-21.0.1+12/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
-  -o "$outDir" -c "$configPath" -p "$smtpPassword" -s -v "$shiftPlanCopySchemaPath" -d "$shiftPlanCopyXMLFile" \
-  -m "$swapData" -j "$swapDataJSON"
-else
-  /opt/java/jdk-21.0.1+12/bin/java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -x "$xmlPath" -t "$templatePath" \
-  -o "$outDir" -v "$shiftPlanCopySchemaPath" -d "$shiftPlanCopyXMLFile" -m "$swapData" -j "$swapDataJSON"
+if [ "$server" = true ]; then # Ausführung als Web-Service
+    java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner \
+    -S -H "$host" -P "$port" -w "$webResourcesPath" -x "$xmlPath" -t "$templatePath" -g "$generated_data" \
+     -e "$mailConfigPath" -p "$smtpPassword"
+elif [ "$sendEmail" = true ]; then # Ausführung als Befehlszeilen-Programm mit Emailversand
+  java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner \
+  -x "$xmlPath" -t "$templatePath" -g "$generated_data" -s -e "$mailConfigPath" -p "$smtpPassword" -m "$swapData" \
+  -j "$swapDataJSON" -u "$useJsonShiftplanConfig"
+else # Ausführung als Befehlszeilen-Programm ohne Emailversand
+  java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner \
+   -x "$xmlPath" -t "$templatePath" -g "$generated_data" -m "$swapData" -j "$swapDataJSON" -u "$useJsonShiftplanConfig"
 fi
