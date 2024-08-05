@@ -1,8 +1,13 @@
 package shiftplan.users;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import shiftplan.calendar.ShiftCalendar;
 import shiftplan.calendar.ShiftPlanCopy;
 import shiftplan.calendar.ShiftPlanSwapException;
+import shiftplan.calendar.ShiftPolicy;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +20,8 @@ import java.util.*;
 public class StaffList {
 
     public record StaffData(String id, String displayName, TreeSet<Integer> cwIndices) {}
+
+    private static final Logger logger = LogManager.getLogger(StaffList.class);
 
     private final ShiftPlanCopy shiftPlanCopy;
     private Path staffListDir;
@@ -49,12 +56,20 @@ public class StaffList {
         Map<String, StaffData> employeeMap = new HashMap<>();
         ShiftCalendar.CalendarInfo info = getCurrentCalendarWeek();
 
+        // Mapping von Employee-Id und Spätschichttage-Zähler, mit dessen Hilfe nur die Startwoche einer Spätschicht
+        // in die Stafflist eingetragen wird (bei Wochen-übergreifenden Spätschichten wird die zweite Kalenderwoche nicht
+        // in die Stafflist eingetragen)
+        Map<String, Integer> idIndexMap = new HashMap<>();
+        int lateshiftPeriod = ShiftPolicy.INSTANCE.getLateShiftPeriod();
+
+
         for (Map.Entry<ShiftPlanCopy.CalendarWeek, ShiftPlanCopy.WorkDay[]> entry : shiftPlanCopy.getCalendarWeeks().entrySet()) {
             ShiftPlanCopy.CalendarWeek cw = entry.getKey();
             ShiftPlanCopy.WorkDay[] workDays = entry.getValue();
             int cwIndex = cw.cwIndex();
 
             if (cwIndex < info.calendarWeekIndex()) {
+                // Die Kalenderwoche <cwIndex> liegt vor dem aktuellen Datum
                 continue;
             }
 
@@ -62,13 +77,27 @@ public class StaffList {
                 Employee lateshift = workDay.getLateshift();
                 if (lateshift != null) {
                     String id = lateshift.getId();
+                    idIndexMap.putIfAbsent(id, 0);
+                    if (idIndexMap.get(id) == lateshiftPeriod) {
+                        // Die Spätschichtperiode des Mitarbeiters ist abgelaufen. Der Zähler wird zurückgesetzt
+                        idIndexMap.put(id, 0);
+                    }
+                    // Den Spätschichtzähler des MA's <id> hochzählen
+                    idIndexMap.merge(id, 1, Integer::sum);
+
                     String displayName = lateshift.getName() + " " + lateshift.getLastName();
                     StaffData staffData = employeeMap.get(id);
                     if (staffData == null) {
                         staffData = new StaffData(id, displayName, new TreeSet<>(Integer::compareTo));
                         employeeMap.put(id, staffData);
                     }
-                    staffData.cwIndices().add(cwIndex);
+                    if (idIndexMap.get(id) == 1) {
+                        // Nur bei der ersten registrierten Spätschicht innerhalb einer Spätschichtperiode wird der
+                        // Kalenderwochenindex vermerkt. Solange die Spätschichtperiode eines MA's nicht abgelaufen ist,
+                        // wird keine weitere Kalenderwoche eingetragen (und damit auch keine weitere KW, in welche die
+                        // aktuelle Spätschicht eventuell fällt)
+                        staffData.cwIndices().add(cwIndex);
+                    }
                 }
             }
         }
@@ -84,7 +113,23 @@ public class StaffList {
             staffData.cwIndices.forEach(index -> sj.add(index.toString()));
             builder.append(sj).append("\n");
         }
-        return builder.toString();
+        // Mitarbeiter-Liste auf Console ausdrucken - die Methode <printStaffList> wird nur bei Ausführung im
+        // lokalen Modus aufgerufen
+        String staffList = builder.toString();
+        String separator = "\n\n***********************************************\n\n";
+        System.out.println(separator + staffList + separator);
+        return staffList;
+    }
+
+    public String serializeStaffList(Map<String, StaffData> employeeMap) {
+        List<StaffData> staffDataList = employeeMap.values().stream().toList();
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.writeValueAsString(staffDataList);
+        } catch (JsonProcessingException e) {
+            logger.error("StaffList kann nicht serialisiert werden", e);
+            throw new ShiftPlanSwapException(e.getMessage());
+        }
     }
 
     public void writeToFile(String staffData) throws IOException {

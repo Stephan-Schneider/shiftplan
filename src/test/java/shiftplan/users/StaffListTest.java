@@ -24,8 +24,8 @@ class StaffListTest {
     void setUp() throws IOException, JDOMException {
         //String shiftPlanCopyXMLFile = "/home/stephan/Projekte/Web/shiftplan_serialized.xml";
         //String shiftPlanCopySchemaDir = "/home/stephan/Projekte/Web";
-        String shiftPlanCopyXMLFile = "/home/stephan/Apps/Shiftplan/generated_data/shiftplan_serialized.xml";
-        String shiftPlanCopySchemaDir = "/home/stephan/Apps/Shiftplan/XML";
+        String shiftPlanCopyXMLFile = "/home/stephan/Projekte/Web/generated_data/shiftplan_serialized.xml";
+        String shiftPlanCopySchemaDir = "/home/stephan/Projekte/Web/XML";
         ShiftPlanSerializer serializer = new ShiftPlanSerializer(shiftPlanCopyXMLFile, shiftPlanCopySchemaDir);
         copy = serializer.deserializeShiftplan();
     }
@@ -53,5 +53,14 @@ class StaffListTest {
         assertNotNull(printed);
         logger.debug(printed);
         staffList.writeToFile(printed);
+    }
+
+    @Test
+    void serializeStaffList() {
+        StaffList staffList = new StaffList(copy);
+        Map<String, StaffList.StaffData> employeeMap = staffList.createStaffList();
+        String serialized = staffList.serializeStaffList(employeeMap);
+        assertNotNull(serialized);
+        logger.debug(serialized);
     }
 }
