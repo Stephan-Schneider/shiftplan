@@ -125,8 +125,8 @@
                 </xs:element>
             </xs:sequence>
             <xs:attribute name="for" type="xs:gYear" use="required" />
-            <xs:attribute name="start" type="xs:gYearMonth" use="required" />
-            <xs:attribute name="end" type="xs:gYearMonth" use="required" />
+            <xs:attribute name="start" type="xs:date" use="required" />
+            <xs:attribute name="end" type="xs:date" use="required" />
         </xs:complexType>
     </xs:element>
 </xs:schema>

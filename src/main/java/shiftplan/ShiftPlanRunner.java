@@ -42,16 +42,24 @@ public class ShiftPlanRunner {
         }
 
         IShiftplanDescriptor descriptor = getShiftPlanDescriptor(xmlPath);
-        this.createShiftplan(descriptor, shiftPlanCopyXMLFile);
+        this.createShiftplan(descriptor, shiftPlanCopyXMLFile, xmlPath);
     }
 
-    public void createShiftplan(IShiftplanDescriptor descriptor, String shiftPlanCopyXMLFile) {
+    public void createShiftplan(IShiftplanDescriptor descriptor, String shiftPlanCopyXMLFile, String xmlPath) {
         if (descriptor == null) {
             throw new ShiftPlanRunnerException("Keine Schichtplan-Beschreibungsdaten vorhanden!");
         }
+
         int year = descriptor.getYear();
-        LocalDate startDate = descriptor.getStartDate();
-        LocalDate endDate = descriptor.getEndDate();
+        BoundaryHandler boundaryHandler = new BoundaryHandler(
+                descriptor.getStartDate(),
+                descriptor.getEndDate(),
+                shiftPlanCopyXMLFile,
+                xmlPath
+        );
+        boundaryHandler.setBoundaryStrict(descriptor.isBoundaryStrict());
+        LocalDate startDate = boundaryHandler.getStartDate();
+        LocalDate endDate = boundaryHandler.getEndDate();
         List<LocalDate> holidays = descriptor.getHolidays();
         Employee[] employees = descriptor.getEmployees();
 

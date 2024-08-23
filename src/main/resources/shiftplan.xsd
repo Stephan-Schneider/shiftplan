@@ -93,6 +93,7 @@
             <xs:attribute name="for" use="required" type="xs:gYear"/>
             <xs:attribute name="start-date" use="optional" type="xs:gYearMonth"/>
             <xs:attribute name="end-date" use="optional" type="xs:gYearMonth"/>
+            <xs:attribute name="boundary-strict" use="required" type="xs:boolean"/>
         </xs:complexType>
     </xs:element>
 </xs:schema>

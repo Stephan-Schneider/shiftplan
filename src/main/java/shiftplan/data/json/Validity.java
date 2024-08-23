@@ -11,6 +11,7 @@ public class Validity {
     private int year;
     private int startDate;
     private int endDate;
+    private boolean boundaryStrict;
     @JsonSetter("publicHolidays")
     private List<Holiday> holidays;
 
@@ -40,6 +41,14 @@ public class Validity {
 
     public void setEndDate(int endDate) {
         this.endDate = endDate;
+    }
+
+    public boolean isBoundaryStrict() {
+        return boundaryStrict;
+    }
+
+    public void setBoundaryStrict(boolean boundaryStrict) {
+        this.boundaryStrict = boundaryStrict;
     }
 
     public List<Holiday> getHolidays() {

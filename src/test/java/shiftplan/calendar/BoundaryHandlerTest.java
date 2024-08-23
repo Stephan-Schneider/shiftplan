@@ -8,8 +8,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class BoundaryHandlerTest {
 
-    private final LocalDate startDate = LocalDate.of(2024,5,1);
-    private final LocalDate endDate  = LocalDate.of(2024,6,30);
+    private final LocalDate startDate = LocalDate.of(2024,1,1);
+    private final LocalDate endDate  = LocalDate.of(2024,4,30);
     private final String xmlFile = "/home/stephan/Projekte/Web/generated_data/shiftplan_serialized.xml";
     private final String xsdPath = "/home/stephan/Projekte/Web/XML";
 
@@ -33,5 +33,20 @@ class BoundaryHandlerTest {
         BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile, xsdPath);
         LocalDate adjusted = handler.getStartDate();
         assertEquals(LocalDate.of(2024,4,29), adjusted);
+    }
+
+    @Test
+    void getEndDateStrict() {
+        BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile, xsdPath);
+        handler.setBoundaryStrict(true);
+        LocalDate adjusted = handler.getEndDate();
+        assertEquals(endDate, adjusted);
+    }
+
+    @Test
+    void getEndDateNonStrict() {
+        BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile, xsdPath);
+        LocalDate adjusted = handler.getEndDate();
+        assertEquals(LocalDate.of(2024,5,3), adjusted);
     }
 }

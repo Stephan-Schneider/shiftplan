@@ -27,6 +27,7 @@ public class ShiftPlanDescriptor implements IShiftplanDescriptor {
     private int year;
     private LocalDate startDate;
     private LocalDate endDate;
+    private boolean boundaryStrict = false;
     private final List<LocalDate> holidays = new ArrayList<>();
     private Employee[] employees;
 
@@ -54,22 +55,30 @@ public class ShiftPlanDescriptor implements IShiftplanDescriptor {
         }
     }
 
+    @Override
     public int getYear() {
         return year;
     }
 
+    @Override
     public LocalDate getStartDate() {
         return startDate;
     }
 
+    @Override
     public LocalDate getEndDate() {
         return endDate;
     }
 
+    @Override
+    public boolean isBoundaryStrict() { return boundaryStrict; }
+
+    @Override
     public List<LocalDate> getHolidays() {
         return holidays;
     }
 
+    @Override
     public Employee[] getEmployees() {
         return employees;
     }
@@ -110,6 +119,13 @@ public class ShiftPlanDescriptor implements IShiftplanDescriptor {
                 throw new InvalidShiftPlanException("Ungültiges Enddatum. Grund: Ungültige Jahresangabe°!");
             }
         }
+
+        logger.info("Der Modus für Schichtplan-Beginn und -Ende wird ausgelesen.");
+        Attribute boundaryStrictAttr = rootNode.getAttribute("boundary-strict");
+        if (boundaryStrictAttr != null) {
+            boundaryStrict = boundaryStrictAttr.getBooleanValue();
+        }
+        logger.info("Schichtplan wird im strikten Modus erstellt: {}", boundaryStrict);
 
         Element publicHolidays = rootNode.getChild("public-holidays");
         if (publicHolidays != null) {

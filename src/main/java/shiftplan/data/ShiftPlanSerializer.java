@@ -22,12 +22,12 @@ import java.nio.file.StandardOpenOption;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.format.TextStyle;
 import java.util.*;
 
 public class ShiftPlanSerializer {
 
-    private static final DateTimeFormatter yearMonth = DateTimeFormatter.ofPattern("yyyy-MM");
     private static final DateTimeFormatter isoDate = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     private static final Logger logger = LogManager.getLogger(ShiftPlanSerializer.class);
@@ -117,8 +117,8 @@ public class ShiftPlanSerializer {
         Document doc = new Document();
         Element root = new Element("shiftplan");
         root.setAttribute("for", String.valueOf(year));
-        root.setAttribute("start", yearMonth.format(startDate));
-        root.setAttribute("end", yearMonth.format(endDate));
+        root.setAttribute("start", isoDate.format(startDate));
+        root.setAttribute("end", isoDate.format(endDate));
         doc.setRootElement(root);
 
         Element creationParams = new Element("creation-params");
@@ -285,8 +285,8 @@ public class ShiftPlanSerializer {
         try {
             Attribute startDateAttr = Objects.requireNonNull(root.getAttribute("start"),
                     "Startdatum für Schichtplan fehlt!");
-            startDate = documentParser.parseShiftPlanDate(startDateAttr);
-        } catch (NullPointerException exception) {
+            startDate = LocalDate.parse(startDateAttr.getValue());
+        } catch (NullPointerException | DateTimeParseException exception) {
             throw new InvalidShiftPlanException(exception.getMessage());
         }
 
@@ -296,8 +296,8 @@ public class ShiftPlanSerializer {
             Attribute endDateAttr = Objects.requireNonNull(root.getAttribute("end"),
                     "Enddatum für Schichtplan fehlt!");
             // XML-Datentyp: gYearMonth (xxxx-xx)
-           endDate = documentParser.parseShiftPlanDate(endDateAttr);
-        } catch (NullPointerException exception) {
+           endDate = LocalDate.parse(endDateAttr.getValue());
+        } catch (NullPointerException | DateTimeParseException exception) {
             throw new InvalidShiftPlanException(exception.getMessage());
         }
 

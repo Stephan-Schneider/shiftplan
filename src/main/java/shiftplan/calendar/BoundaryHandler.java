@@ -9,6 +9,7 @@ import shiftplan.data.ShiftPlanSerializer;
 import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.Month;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,8 @@ public class BoundaryHandler {
     private final String shiftplanXSD;
 
     private boolean boundaryStrict = false;
+
+    private final ShiftCalendar shiftCalendar;
 
     /**
      * Klasse zur Festlegung der Grenzen des Schichtplans (Beginn und Ende). Die Grenzen können in
@@ -47,8 +50,12 @@ public class BoundaryHandler {
     public BoundaryHandler(LocalDate start, LocalDate end, String shiftplanCopy, String shiftplanXSD) {
         startDate = Objects.requireNonNull(start, "Fehlendes Startdatum");
         endDate = Objects.requireNonNull(end, "Fehlendes Enddatum");
+        assert start.getYear() == end.getYear();
+
         this.shiftplanCopy = shiftplanCopy;
         this.shiftplanXSD = shiftplanXSD;
+
+        shiftCalendar = new ShiftCalendar(startDate.getYear());
     }
 
     public void setBoundaryStrict(boolean strict) {
@@ -56,10 +63,34 @@ public class BoundaryHandler {
     }
 
     public LocalDate getStartDate() {
+        int shiftplanForYear = startDate.getYear();
+        LocalDate firstCalendarWeekStart = shiftCalendar.getFirstCalendarWeekStart(shiftplanForYear);
+
         if (boundaryStrict) {
+            if (startDate.getMonth() == Month.JANUARY) {
+                // Die erste Kalenderwoche eines Jahres (KW 1) kann nach dem 01.01. des betreffenden Jahres beginnen.
+                // In diesen Fällen liegt der Beginn des Schichtplans, der normalerweise mit dem 01. des Monats angegeben
+                // wird, vor dem Beginn der ersten Kalenderwoche (Bsp.: 01.01. = Freitag). Das Startdatum des Kalenders
+                // muss daher in diesem speziellen Fall am Jahresanfang auf das Datum des ersten Tages der KW 1 gesetzt
+                // werden, um einen korrekten Ablauf des Programms zu gewährleisten.
+                if (startDate.isBefore(firstCalendarWeekStart)) {
+                    return firstCalendarWeekStart;
+                }
+            }
             return startDate;
         }
         LocalDate adjacentMonday = getAdjacentMonday();
+
+        if (adjacentMonday.isBefore(firstCalendarWeekStart)) {
+            // Das Zurückdatieren des Startdatums kann zur Folge haben, dass das Startdatum in die letzte Kalenderwoche
+            // des Vorjahres fällt. Da die Ermittlung der Startkalenderwoche in ShiftCalender immer mit der ersten KW
+            // beginnt, führt die Rückdatierung des Startdatums in die letzte KW des Vorjahres zu einer Fehlfunktion.
+            // Das Startdatum muss daher auf den ersten Montag der 1. KW gesetzt werden.
+            // Bsp.: der 01.01. ist ein Freitag (= KW 52/53), die KW 1 beginnt am 04.01. Der Montag wird zunächst auf
+            // den 28.12, also in die letzte KW des Vorjahres zurückgesetzt und muss anschließend auf den 04.01.
+            // korrigiert werden.
+            return firstCalendarWeekStart;
+        }
         ShiftPlanCopy copy = getShiftplanCopy();
         if (copy == null) {
             // Es existiert kein Schichtplan für eine vorherige Periode. Der Beginn des Schichtplans wird
@@ -95,9 +126,18 @@ public class BoundaryHandler {
 
     public LocalDate getEndDate() {
         if (boundaryStrict) {
+            if (endDate.getMonth() == Month.DECEMBER) {
+                // Erläuterungen über den Grund einer eventuellen Adjustierung des Enddatum im Dezember siehe Kommentar
+                // in <adjustEndDateForDecember>
+                return shiftCalendar.adjustEndDateForDecember(endDate);
+            }
             return endDate;
+        } else {
+            // Prüfen, ob der adjustierte Freitag als Enddatum des Kalenders in KW 1 des Folgejahres liegt.
+            // Falls ja, um 7 Tage zurücksetzen (= Freitag der letzten KW im Schichtplan-Jahr)
+            LocalDate adjacentFriday = getAdjacentFriday();
+            return shiftCalendar.adjustEndDateForDecemberFullWeek(adjacentFriday);
         }
-        return getAdjacentFriday();
     }
 
     private ShiftPlanCopy getShiftplanCopy() {

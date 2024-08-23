@@ -113,6 +113,11 @@ public class ShiftplanDescriptorJson implements IShiftplanDescriptor {
     }
 
     @Override
+    public boolean isBoundaryStrict() {
+        return getValidity().isBoundaryStrict();
+    }
+
+    @Override
     public List<LocalDate> getHolidays() {
         return validity
                 .getHolidays()

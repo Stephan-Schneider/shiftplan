@@ -5,7 +5,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.Month;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.*;
@@ -23,6 +22,7 @@ public class ShiftCalendar {
     public ShiftCalendar(int year) {calendarForYear = year;}
 
     public LocalDate getFirstCalendarWeekStart(int year) {
+        // TODO: Instanz-Methode in statisch Methode abändern
         LocalDate firstDay = LocalDate.of(year,1,1); // 01. Januar des Jahres <year>
         LocalDate firstDayPlusSeven = firstDay.plusDays(7);
         LocalDate firstThursday = firstDay
@@ -80,23 +80,6 @@ public class ShiftCalendar {
                 end.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)));
 
         LocalDate firstDayInCW = getFirstCalendarWeekStart(calendarForYear);
-
-        if (start.getMonth() == Month.JANUARY) {
-            // Die erste Kalenderwoche eines Jahres (KW 1) kann nach dem 01.01. des betreffenden Jahres beginnen.
-            // In diesen Fällen liegt der Beginn des Schichtplans, der normalerweise mit dem 01. des Monats angegeben
-            // wird, vor dem Beginn der ersten Kalenderwoche. Das Startdatum des Kalenders muss daher in diesem
-            // speziellen Fall am Jahresanfang auf das Datum des ersten Tages der KW 1 gesetzt werden, um einen
-            // korrekten Ablauf des Programms zu gewährleisten.
-            if (start.isBefore(firstDayInCW)) {
-                start = firstDayInCW;
-            }
-        }
-
-        if (end.getMonth() == Month.DECEMBER) {
-            // Erläuterungen über den Grund einer eventuellen Adjustierung des Enddatum im Dezember siehe Kommentar in
-            // <adjustEndDateForDecember>
-            end = adjustEndDateForDecember(end);
-        }
 
         CalendarInfo startCw = getCalendarWeekOfDate(firstDayInCW, start, true);
         CalendarInfo endCw = getCalendarWeekOfDate(firstDayInCW, end, false);
@@ -213,5 +196,25 @@ public class ShiftCalendar {
         }
         logger.info("Enddatum im Dezember (per shiftplan.xml oder adjustiert): {}", calendarEndWrapper.calEnd);
         return calendarEndWrapper.calEnd;
+    }
+
+    LocalDate adjustEndDateForDecemberFullWeek(LocalDate adjustedFriday) {
+        // Im nicht-strikten Modus bei der Erstellung eines Schichtplans besteht in Bezug auf das Planende am Jahresende
+        // das gleiche Problem wie oben: Der extrapolierte Freitag als letzter Tag des Schichtplans am Jahresende
+        // kann sich bereits in der KW 1 des Folgejahres befinden. In diesem Fall muss das Schichtplanende um eine
+        // Woche, d.h. auf den Freitag der letzten Kalenderwoche im Gültigkeitsjahr des Schichtplans, zurückdatiert
+        // werden.
+        LocalDate cwStartInNextYear = getFirstCalendarWeekStart(calendarForYear +1);
+        assert cwStartInNextYear.getDayOfWeek() == DayOfWeek.MONDAY;
+
+        LocalDate firstFridayOfCW1 = cwStartInNextYear.plusDays(4);
+        if (firstFridayOfCW1.isEqual(adjustedFriday)) {
+            // Der adjustierte Freitag befindet sich in KW 1 des Folgejahres und muss zurückdatiert werden
+            return adjustedFriday.minusDays(7);
+        } else if (firstFridayOfCW1.isBefore(adjustedFriday)) {
+            // Diese Situation wird wahrscheinlich nie eintreten
+            return adjustedFriday.minusDays(14);
+        }
+        return adjustedFriday;
     }
 }

@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <!-- Attribut 'for': Jahr (vierstellig-), für welches der Plan erstellt wird (Pflichtattribut).
-     Optional: start-date / end-date. Format start- / end-date: yyyy-MM -->
+     Optional: start-date / end-date. Format start- / end-date: yyyy-MM
+     Pflichtattribut boundary-strict. Mögliche Werte: true|false. True: Schichtplan beginnt exakt am 01. des Monats und
+        endet am letzten Tag des Monats. False: Der Schichtplan beginnt montags und endet freitags -->
 <shiftplan xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
- xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2024" start-date="2024-04" end-date="2024-12">
+ xsi:noNamespaceSchemaLocation="shiftplan.xsd" for="2024" start-date="2024-01" end-date="2024-04" boundary-strict="false">
 
     <!-- Öffentliche Feiertage. Es sollten zumindest solche Feiertage angegeben werden, die auf einen Werktag fallen.
          Das Attribut 'name' ist optional, Datumsangabe im 'date'-Attribut: ISO-Format (yyyy-MM-dd) -->

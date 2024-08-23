@@ -106,7 +106,7 @@ class ShiftPlanRunnerTest {
     void testCreatePlanWithPDF() throws TemplateException, IOException {
         ShiftPlanRunner runner = new ShiftPlanRunner();
         SwapParams swapParams = runner.getOperationalParams("CREATE");
-        runner.createShiftPlan(null, shiftPlanCopy, swapParams);
+        runner.createShiftPlan(getShiftPlanCopyXSD, shiftPlanCopy, swapParams);
         Map<String, Object> dataModel = runner.getShiftplanCopy(shiftPlanCopy, getShiftPlanCopyXSD);
         Path attachment = runner.createPDF(null, dataModel, System.getProperty("user.home"));
         assertNotNull(attachment);

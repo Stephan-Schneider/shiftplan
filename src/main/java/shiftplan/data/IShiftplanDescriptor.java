@@ -15,6 +15,8 @@ public interface IShiftplanDescriptor {
 
     LocalDate getEndDate();
 
+    boolean isBoundaryStrict();
+
     List<LocalDate> getHolidays();
 
     Employee[] getEmployees();
