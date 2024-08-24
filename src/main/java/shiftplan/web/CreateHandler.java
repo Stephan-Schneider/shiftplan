@@ -3,6 +3,7 @@ package shiftplan.web;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
+import io.undertow.util.PathTemplateMatch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import shiftplan.ShiftPlanRunner;
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Map;
 
 
 public class CreateHandler implements HttpHandler {
@@ -30,11 +32,20 @@ public class CreateHandler implements HttpHandler {
             exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json; charset=utf-8");
             exchange.getResponseSender().send(shiftplanDescription);
         } else if (method.equalsIgnoreCase("post")) {
+            PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
+            Map<String, String> urlParams = pathMatch.getParameters();
+            // Existierende shiftplan.json löschen ? (In bestimmten Fällen notwendig, vor allem wenn
+            // ein neuer Plan im gleichen Zeitraum eines bestehenden Plans erstellt wird)
+            boolean clear = Boolean.parseBoolean(urlParams.getOrDefault("clear", "false"));
+            if (clear) {
+                deleteShiftplanJson();
+            }
             exchange.getRequestReceiver().receiveFullBytes((e, m) -> {
                 String data = new String(m, StandardCharsets.UTF_8);
                 logger.info("Json: {}", data);
                 ShiftplanDescriptorJson descriptor = ShiftplanDescriptorJson.readObject(data);
-                new ShiftPlanRunner().createShiftplan(descriptor, config.getShiftPlanCopyXMLFile());
+                new ShiftPlanRunner().createShiftplan(descriptor, config.getShiftPlanCopyXMLFile(),
+                        config.getShiftPlanCopySchemaDir());
                 try {
                     this.writeDescription(data);
                 } catch (IOException ex) {
@@ -49,7 +60,7 @@ public class CreateHandler implements HttpHandler {
 
     String readDescription() throws IOException {
         String pathString = config.getJsonFile() == null ? "" : config.getJsonFile();
-        if (pathString.isEmpty()) return ""; //TODO: Ausnahme werden; in aufrufender Methode Fehler-Code senden
+        if (pathString.isEmpty()) return "";
         Path jsonPath = Path.of(pathString);
         String shiftplanDescription = "{}";
         if (Files.exists(jsonPath)) {
@@ -66,6 +77,7 @@ public class CreateHandler implements HttpHandler {
 
         String pathString = config.getJsonFile() == null ? "" : config.getJsonFile();
         if (pathString.isEmpty()) return;
+        pathString = pathString.substring(0, pathString.indexOf(".")) + "_test.json";
 
         Path jsonPath = Path.of(pathString);
         Path parentDir = jsonPath.getParent();
@@ -80,5 +92,16 @@ public class CreateHandler implements HttpHandler {
                 StandardOpenOption.TRUNCATE_EXISTING,
                 StandardOpenOption.WRITE
         );
+    }
+
+    private void deleteShiftplanJson() {
+        String pathString = config.getJsonFile() == null ? "" : config.getJsonFile();
+        if (pathString.isEmpty()) return;
+
+        try {
+            Files.deleteIfExists(Path.of(pathString));
+        } catch (IOException e) {
+            throw new ShiftPlanRunnerException(e.getMessage());
+        }
     }
 }

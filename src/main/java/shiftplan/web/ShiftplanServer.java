@@ -66,7 +66,7 @@ public class ShiftplanServer {
                                     exchange.getResponseSender().send(msg);
                                 }, identityManager))
                                 .get("/create", new CreateHandler())
-                                .post("/create", new CreateHandler())
+                                .post("/create/{clear}", new CreateHandler())
                                 .put("/publish/{format}", new PublishHandler())
                                 .get("/stafflist", new StaffListHandler())
                                 .put("/modify/{mode}/{swapHo}/{emp1ID}/{cwIndex1}/{emp2ID}", new ModifyHandler())
