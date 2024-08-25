@@ -77,6 +77,7 @@ public class CreateHandler implements HttpHandler {
 
         String pathString = config.getJsonFile() == null ? "" : config.getJsonFile();
         if (pathString.isEmpty()) return;
+        pathString = pathString.substring(0, pathString.indexOf(".")) + "_test.json";
 
         Path jsonPath = Path.of(pathString);
         Path parentDir = jsonPath.getParent();
