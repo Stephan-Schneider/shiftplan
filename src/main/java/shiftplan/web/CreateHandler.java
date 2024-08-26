@@ -34,11 +34,11 @@ public class CreateHandler implements HttpHandler {
         } else if (method.equalsIgnoreCase("post")) {
             PathTemplateMatch pathMatch = exchange.getAttachment(PathTemplateMatch.ATTACHMENT_KEY);
             Map<String, String> urlParams = pathMatch.getParameters();
-            // Existierende shiftplan.json löschen ? (In bestimmten Fällen notwendig, vor allem wenn
+            // Existierende shiftplan_serialized.xml löschen? (In bestimmten Fällen notwendig, vor allem wenn
             // ein neuer Plan im gleichen Zeitraum eines bestehenden Plans erstellt wird)
             boolean clear = Boolean.parseBoolean(urlParams.getOrDefault("clear", "false"));
             if (clear) {
-                deleteShiftplanJson();
+                deleteShiftplanCopy();
             }
             exchange.getRequestReceiver().receiveFullBytes((e, m) -> {
                 String data = new String(m, StandardCharsets.UTF_8);
@@ -93,8 +93,8 @@ public class CreateHandler implements HttpHandler {
         );
     }
 
-    private void deleteShiftplanJson() {
-        String pathString = config.getJsonFile() == null ? "" : config.getJsonFile();
+    private void deleteShiftplanCopy() {
+        String pathString = config.getShiftPlanCopyXMLFile() == null ? "" : config.getShiftPlanCopyXMLFile();
         if (pathString.isEmpty()) return;
 
         try {
