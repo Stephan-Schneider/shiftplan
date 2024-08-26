@@ -39,7 +39,7 @@
         <Logger name="shiftplan" level="TRACE" additivity="false">
             <AppenderRef ref="AppLogger" />
         </Logger>
-        <Root level="TRACE">
+        <Root level="INFO">
             <AppenderRef ref="Console" />
             <AppenderRef ref="RootLogger" />
         </Root>
