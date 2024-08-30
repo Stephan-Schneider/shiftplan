@@ -2,6 +2,8 @@ package shiftplan.web;
 
 import io.undertow.Handlers;
 import io.undertow.Undertow;
+import io.undertow.attribute.ExchangeAttributes;
+import io.undertow.predicate.Predicates;
 import io.undertow.security.api.AuthenticationMechanism;
 import io.undertow.security.api.AuthenticationMode;
 import io.undertow.security.api.SecurityContext;
@@ -45,6 +47,10 @@ public class ShiftplanServer {
                                 ))
                                 .setDirectoryListingEnabled(true)
                                 .setMimeMappings(MimeMappings.DEFAULT)
+                                .setCachable(
+                                        Predicates.not(Predicates.contains(
+                                                ExchangeAttributes.relativePath(), "Schichtplan")))
+                                .setCacheTime(90)
                         )
                         .addPrefixPath("api/shiftplan", Handlers.routing()
                                 .add(new HttpString("head"), "/stafflist", exchange -> {

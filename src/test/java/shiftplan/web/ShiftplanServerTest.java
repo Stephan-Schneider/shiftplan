@@ -20,7 +20,7 @@ class ShiftplanServerTest {
                 .webResourcesBasePath("/home/stephan/public/dist")
                 .build();
 
-        ShiftplanServer.createServer("localhost", 8080);
+        ShiftplanServer.createServer("0.0.0.0", 8080);
         System.out.println("Aufruf 'ShiftplanServer.createServer beendet");
     }
 

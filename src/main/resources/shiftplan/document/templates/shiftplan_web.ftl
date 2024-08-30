@@ -379,12 +379,14 @@
                                             <#if employee??>
                                                 <li><span style="color: ${employee.highlightColor}">${employee.name}</span></li>
                                             <#else>
-                                                <span class="small">Nicht besetzt</span><br>
+                                                <!--<span class="small">Nicht besetzt</span><br>-->
+                                                <span class="small"></span><br>
                                             </#if>
                                         </#items>
                                     </ul>
                                     <#else>
-                                        <p><span class="small">Nicht besetzt</span></p>
+                                        <!--<p><span class="small">Nicht besetzt</span></p>-->
+                                        <p><span class="small"></span></p>
                                 </#list>
                             </td>
                             <td
