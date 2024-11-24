@@ -45,7 +45,7 @@ class PasswordHashTest {
     void createCredentials() throws NoSuchAlgorithmException, BackingStoreException {
         // Login-credentials für den Test-Server hinterlegen
         Preferences users = Preferences.userNodeForPackage(PrefsIdentityManager.class);
-        String user = "Schnuffi";
+        String user = "Schicht-Exp";
         String passwd = "debbo_153";
         String passwd_hash = PasswordHash.toHexString(PasswordHash.getSHA(passwd));
         users.put(user, passwd_hash);

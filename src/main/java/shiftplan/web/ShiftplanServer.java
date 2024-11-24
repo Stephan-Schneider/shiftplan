@@ -18,6 +18,7 @@ import io.undertow.server.handlers.resource.PathResourceManager;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
 import io.undertow.util.MimeMappings;
+import shiftplan.security.AuthenticatedUsers;
 
 import static io.undertow.Handlers.resource;
 
@@ -28,6 +29,7 @@ import java.util.List;
 public class ShiftplanServer {
 
     static final String BASE_PATH = ConfigBundle.INSTANCE.getWebResourcesBasePath();
+    static final String CUSTOM_AUTH_HEADER = "X-Auth-ID";
 
     public static void createServer(String host, int port) {
 
@@ -62,6 +64,8 @@ public class ShiftplanServer {
                                     final SecurityContext context = exchange.getSecurityContext();
                                     String msg;
                                     if (context.isAuthenticated()) {
+                                        String authId = exchange.getRequestHeaders().getFirst(CUSTOM_AUTH_HEADER);
+                                        AuthenticatedUsers.getInstance().addAuthenticatedUser(authId);
                                         exchange.setStatusCode(200);
                                         msg = "User authentifiziert";
                                     } else {
@@ -71,12 +75,12 @@ public class ShiftplanServer {
                                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain; charset=utf-8");
                                     exchange.getResponseSender().send(msg);
                                 }, identityManager))
-                                .get("/create", new CreateHandler())
-                                .post("/create/{clear}", new CreateHandler())
-                                .put("/publish/{format}", new PublishHandler())
-                                .get("/stafflist", new StaffListHandler())
-                                .put("/modify/{mode}/{swapHo}/{emp1ID}/{cwIndex1}/{emp2ID}", new ModifyHandler())
-                                .put("/modify/{mode}/{swapHo}/{emp1ID}/{cwIndex1}/{emp2ID}/{cwIndex2}", new ModifyHandler())
+                                .get("/create", new AuthorizedHandler(new CreateHandler()))
+                                .post("/create/{clear}", new AuthorizedHandler(new CreateHandler()))
+                                .put("/publish/{format}", new AuthorizedHandler(new PublishHandler()))
+                                .get("/stafflist", new AuthorizedHandler(new StaffListHandler()))
+                                .put("/modify/{mode}/{swapHo}/{emp1ID}/{cwIndex1}/{emp2ID}", new AuthorizedHandler(new ModifyHandler()))
+                                .put("/modify/{mode}/{swapHo}/{emp1ID}/{cwIndex1}/{emp2ID}/{cwIndex2}", new AuthorizedHandler(new ModifyHandler()))
                                 .setFallbackHandler(exchange -> {
                                     exchange.setStatusCode(404);
                                     exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");

@@ -45,7 +45,6 @@ public class PrefsIdentityManager implements IdentityManager {
     private boolean verifyCredential(Account account, Credential credential) {
         if (credential instanceof PasswordCredential) {
             String providedPassword = String.valueOf(((PasswordCredential) credential).getPassword());
-            logger.debug("Übermitteltes Klartext Passwort: {}", providedPassword);
             try {
                 providedPassword = PasswordHash.toHexString(PasswordHash.getSHA(providedPassword));
                 logger.debug("Übermitteltes HexString-Passwort: {}", providedPassword);

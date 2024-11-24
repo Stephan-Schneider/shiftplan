@@ -6,7 +6,7 @@ import java.nio.file.Path;
 
 class ShiftplanServerTest {
 
-    private static final Path appBase = Path.of("/", "home", "stephan", "Projekte", "Web");
+    private static final Path appBase = Path.of("/", "home", "stephan", "tmp", "Web");
 
 
     public static void main(String[] args) {
@@ -17,7 +17,7 @@ class ShiftplanServerTest {
         )
                 .templateDir(appBase.resolve("Template").toString())
                 .generatedDataDir(appBase.resolve("generated_data").toString())
-                .webResourcesBasePath("/home/stephan/public/dist")
+                .webResourcesBasePath("/home/stephan/tmp/dist")
                 .build();
 
         ShiftplanServer.createServer("0.0.0.0", 8080);
