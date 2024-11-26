@@ -266,6 +266,10 @@ public class ShiftPlanSerializer {
     }
 
     public ShiftPlanCopy deserializeShiftplan() throws IOException, JDOMException {
+        return deserializeShiftplan(true);
+    }
+
+    public ShiftPlanCopy deserializeShiftplan(boolean parsePolicy) throws IOException, JDOMException {
         // Die Dateien shiftplan_serialized.xml und shiftplan_serialized.xsd müssen existieren und gelesen werden können.
         boolean isValidXML = isValidFile(xmlFile);
         boolean isValidXSD = isValidFile(xsdFile);
@@ -306,9 +310,11 @@ public class ShiftPlanSerializer {
 
         ShiftPlanCopy shiftPlanCopy = new ShiftPlanCopy(year, startDate, endDate, employees);
 
-        logger.info("Auslesen der Spätschicht- und Homeoffice-Richtlinien ...");
-        Element creationParams = root.getChild("creation-params");
-        documentParser.parsePolicy(creationParams);
+        if (parsePolicy) {
+            logger.info("Auslesen der Spätschicht- und Homeoffice-Richtlinien ...");
+            Element creationParams = root.getChild("creation-params");
+            documentParser.parsePolicy(creationParams);
+        }
 
 
         logger.info("Auslesen des Schichtplans ...");

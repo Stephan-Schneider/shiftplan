@@ -143,7 +143,8 @@ public class BoundaryHandler {
     private ShiftPlanCopy getShiftplanCopy() {
         ShiftPlanSerializer serializer = new ShiftPlanSerializer(shiftplanCopy, shiftplanXSD);
         try {
-            return serializer.deserializeShiftplan();
+            // Policy-Singleton NICHT mit Daten aus shiftplan_serialized.xml überschreiben!
+            return serializer.deserializeShiftplan(false);
         } catch (IllegalArgumentException ex) {
             logger.warn("Es existiert keine Schichtplan-Kopie oder XSD-Schema");
             return null;

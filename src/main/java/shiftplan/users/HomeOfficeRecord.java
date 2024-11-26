@@ -40,6 +40,7 @@ public class HomeOfficeRecord implements Comparable<HomeOfficeRecord> {
     }
 
     public static void createHomeOfficeReport(Employee[] employees, LocalDate start, LocalDate end) {
+        clearRecords();
         LocalDate endExclusive = end.plusDays(1);
         for (Employee employee : employees) {
             start.datesUntil(endExclusive, Period.ofMonths(1)).forEach(localDate -> {
@@ -86,6 +87,10 @@ public class HomeOfficeRecord implements Comparable<HomeOfficeRecord> {
 
     public static String valueOf(int monthValue) {
         return Objects.requireNonNull(months.get(monthValue), "monthValue out of range: " + monthValue + "!");
+    }
+
+    public static void clearRecords() {
+        allRecords.clear();
     }
 
     public static void addRecord(HomeOfficeRecord record) {
