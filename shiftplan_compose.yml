@@ -1,0 +1,39 @@
+name: shiftplan_app
+
+services:
+  caddy:
+    image: caddy:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    dns: # DNS-Server Konfiguration notwendig, wenn TLS-Zertifikate von Caddy generiert werden
+      - 1.1.1.1 # google
+      - 8.8.8.8 # Cloudflare
+    volumes:
+      - /etc/caddy:/etc/caddy
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - shiftplan_app
+
+  shiftplan_app:
+    image: schneiderstep/shiftplan_app:test
+    restart: unless-stopped
+    expose:
+      - "8080"
+    volumes:
+      - ~/Projekte/Konzepte/shiftplan/test/Web/generated_data:/generated_data
+      - ~/Projekte/Konzepte/shiftplan/secrets:/secrets
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+volumes:
+  caddy_data:
+  caddy_config:
