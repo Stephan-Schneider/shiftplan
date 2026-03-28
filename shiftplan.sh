@@ -110,7 +110,7 @@ while getopts "hx:t:g:e:sm:j:w:ulSH:P:" option 2>/dev/null; do
     generated_data=$OPTARG;;
   e) # Pfad zur SMTP-Konfigurationsdatei
     mailConfigPath=$OPTARG;;
-  s) # Emailversand aktivieren (Ja, falls Parameter angegeben)
+  s) # Email-Versand aktivieren (Ja, falls Parameter angegeben)
     sendEmail=true;;
   m) # Operations-Parameter für das Ändern eines Schichtplans (Schichttausch)
     swapData=$OPTARG;;
@@ -137,8 +137,10 @@ done
 
 echo "Starten der shiftplan - Anwendung aus Verzeichnis ${install_dir} ..."
 
+jar_file="shiftplan.jar"
+
 if [ "$createStaffList" = true ]; then
-    java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner -l -x "$xmlPath" \
+    java -jar "$jar_file" -l -x "$xmlPath" \
     -g "$generated_data"
     exit 0 # Skript stoppen - keine weitere Aktion erforderlich oder sinnvoll
 fi
@@ -150,14 +152,11 @@ if [ "$sendEmail" = true ]; then
 fi
 
 if [ "$server" = true ]; then # Ausführung als Web-Service
-    java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner \
-    -S -H "$host" -P "$port" -w "$webResourcesPath" -x "$xmlPath" -t "$templatePath" -g "$generated_data" \
-     -e "$mailConfigPath" -p "$smtpPassword"
-elif [ "$sendEmail" = true ]; then # Ausführung als Befehlszeilen-Programm mit Emailversand
-  java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner \
-  -x "$xmlPath" -t "$templatePath" -g "$generated_data" -s -e "$mailConfigPath" -p "$smtpPassword" -m "$swapData" \
+    java -jar "$jar_file" -S -H "$host" -P "$port" -w "$webResourcesPath" -g "$generated_data"
+elif [ "$sendEmail" = true ]; then # Ausführung als Befehlszeilen-Programm mit Email-Versand
+  java -jar "$jar_file" -x "$xmlPath" -t "$templatePath" -g "$generated_data" -s -e "$mailConfigPath" -p "$smtpPassword" -m "$swapData" \
   -j "$swapDataJSON" -u "$useJsonShiftplanConfig"
-else # Ausführung als Befehlszeilen-Programm ohne Emailversand
-  java --module-path shiftplan-2.0-SNAPSHOT.jar:lib -m shiftplan/shiftplan.ShiftPlanRunner \
-   -x "$xmlPath" -t "$templatePath" -g "$generated_data" -m "$swapData" -j "$swapDataJSON" -u "$useJsonShiftplanConfig"
+else # Ausführung als Befehlszeilen-Programm ohne Email-Versand
+  java -jar "$jar_file" -x "$xmlPath" -t "$templatePath" -g "$generated_data" -m "$swapData" -j "$swapDataJSON" \
+  -u "$useJsonShiftplanConfig"
 fi

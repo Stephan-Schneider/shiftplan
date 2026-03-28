@@ -11,11 +11,10 @@ class BoundaryHandlerTest {
     private final LocalDate startDate = LocalDate.of(2024,1,1);
     private final LocalDate endDate  = LocalDate.of(2024,4,30);
     private final String xmlFile = "/home/stephan/Projekte/Web/generated_data/shiftplan_serialized.xml";
-    private final String xsdPath = "/home/stephan/Projekte/Web/XML";
 
     @Test
     void getStartDateStrict() {
-        BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile, xsdPath);
+        BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile);
         handler.setBoundaryStrict(true);
         LocalDate adjusted = handler.getStartDate();
         assertEquals(startDate, adjusted);
@@ -23,21 +22,21 @@ class BoundaryHandlerTest {
 
     @Test
     void getStartDateNonStrictNoOverlapping() {
-        BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile, xsdPath);
+        BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile);
         LocalDate adjusted = handler.getStartDate();
         assertEquals(LocalDate.of(2024,12,30), adjusted);
     }
 
     @Test
     void getStartDateNonStrictWithOverlapping() {
-        BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile, xsdPath);
+        BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile);
         LocalDate adjusted = handler.getStartDate();
         assertEquals(LocalDate.of(2024,4,29), adjusted);
     }
 
     @Test
     void getEndDateStrict() {
-        BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile, xsdPath);
+        BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile);
         handler.setBoundaryStrict(true);
         LocalDate adjusted = handler.getEndDate();
         assertEquals(endDate, adjusted);
@@ -45,7 +44,7 @@ class BoundaryHandlerTest {
 
     @Test
     void getEndDateNonStrict() {
-        BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile, xsdPath);
+        BoundaryHandler handler = new BoundaryHandler(startDate, endDate, xmlFile);
         LocalDate adjusted = handler.getEndDate();
         assertEquals(LocalDate.of(2024,5,3), adjusted);
     }

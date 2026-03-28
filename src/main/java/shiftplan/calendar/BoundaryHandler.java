@@ -28,6 +28,10 @@ public class BoundaryHandler {
 
     private final ShiftCalendar shiftCalendar;
 
+    public BoundaryHandler(LocalDate start, LocalDate end, String shiftplanCopy) {
+        this(start, end, shiftplanCopy, null);
+    }
+
     /**
      * Klasse zur Festlegung der Grenzen des Schichtplans (Beginn und Ende). Die Grenzen können in
      * zwei Modi festgelegt werden: strikt und nicht-strikt.
@@ -45,7 +49,8 @@ public class BoundaryHandler {
      *              geparste Datum ist immer der letzte Tag des jeweiligen Monats - d.h. der Plan kann
      *              an jedem beliebigen Wochentag enden.
      * @param shiftplanCopy Pfad zur Datei 'shiftplan_serialized.xml'
-     * @param shiftplanXSD Pfad zur Datei 'shiftplan_serialized.xsd' (Schema zur Validierung)
+     * @param shiftplanXSD Pfad zur Datei 'shiftplan_serialized.xsd' (Schema zur Validierung) - braucht nicht angegeben
+     *                     werden, wenn die gebündelte Schemadatei verwendet wird
      */
     public BoundaryHandler(LocalDate start, LocalDate end, String shiftplanCopy, String shiftplanXSD) {
         startDate = Objects.requireNonNull(start, "Fehlendes Startdatum");
@@ -141,7 +146,13 @@ public class BoundaryHandler {
     }
 
     private ShiftPlanCopy getShiftplanCopy() {
-        ShiftPlanSerializer serializer = new ShiftPlanSerializer(shiftplanCopy, shiftplanXSD);
+        ShiftPlanSerializer serializer;
+        if (shiftplanXSD == null) {
+            serializer = new ShiftPlanSerializer(shiftplanCopy);
+        } else {
+            serializer = new ShiftPlanSerializer(shiftplanCopy, shiftplanXSD);
+        }
+
         try {
             // Policy-Singleton NICHT mit Daten aus shiftplan_serialized.xml überschreiben!
             return serializer.deserializeShiftplan(false);

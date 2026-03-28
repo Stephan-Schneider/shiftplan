@@ -44,8 +44,7 @@ public class CreateHandler implements HttpHandler {
                 String data = new String(m, StandardCharsets.UTF_8);
                 logger.info("Json: {}", data);
                 ShiftplanDescriptorJson descriptor = ShiftplanDescriptorJson.readObject(data);
-                new ShiftPlanRunner().createShiftplan(descriptor, config.getShiftPlanCopyXMLFile(),
-                        config.getShiftPlanCopySchemaDir());
+                new ShiftPlanRunner().createShiftplan(descriptor, config.getShiftPlanCopyXMLFile());
                 try {
                     this.writeDescription(data);
                 } catch (IOException ex) {

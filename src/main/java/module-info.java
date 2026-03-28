@@ -1,3 +1,6 @@
+/**
+ * module-info.java für Shiftplan - App
+ */
 module shiftplan {
     requires org.apache.logging.log4j;
     requires freemarker;
@@ -13,8 +16,10 @@ module shiftplan {
     requires jdk.unsupported;
     requires xnio.api;
     requires java.prefs; // Erforderlich, um undertow zum Laufen zu bringen
+    requires java.xml;
     exports shiftplan.users to freemarker, com.fasterxml.jackson.databind;
     exports shiftplan.calendar to freemarker;
     opens shiftplan.calendar to com.fasterxml.jackson.databind;
     opens shiftplan.data.json to com.fasterxml.jackson.databind;
+    opens shiftplan.document to freemarker;
 }

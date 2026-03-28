@@ -6,11 +6,13 @@ import freemarker.template.TemplateException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import shiftplan.calendar.*;
+import shiftplan.document.TemplateProcessor;
 import shiftplan.users.Employee;
 import shiftplan.web.ConfigBundle;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.Map;
@@ -19,8 +21,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ShiftPlanRunnerTest {
 
-    private static final String shiftPlanCopy = "/home/stephan/Projekte/Web/generated_data/shiftplan_serialized.xml";
-    private static final String getShiftPlanCopyXSD = "/home/stephan/Projekte/Web/XML";
+    private static final String shiftPlanCopy = "/home/stephan/Projekte/Konzepte/shiftplan/test/Web/generated_data/shiftplan_serialized.xml";
+    private static final String getShiftPlanCopyXSD = "/home/stephan/Projekte/Konzepte/shiftplan/test/Web";
 
     private SwapParams swapParams;
 
@@ -86,7 +88,17 @@ class ShiftPlanRunnerTest {
         Map<String, Object> dataModel = runner.getShiftplanCopy(shiftPlanCopy, getShiftPlanCopyXSD);
         assertAll("Test getShiftplanCopy",
                 () -> assertTrue(dataModel.containsKey("startDate")),
-                () -> assertEquals(7, ((Employee[]) dataModel.get("employees")).length)
+                () -> assertEquals(5, ((Employee[]) dataModel.get("employees")).length)
+        );
+    }
+
+    @Test
+    void testGetShiftplanCopy_no_external_schema() {
+        ShiftPlanRunner runner = new ShiftPlanRunner();
+        Map<String, Object> dataModel = runner.getShiftplanCopy(shiftPlanCopy);
+        assertAll("Test getShiftplanCopy (no external schema)",
+                () -> assertTrue(dataModel.containsKey("startDate")),
+                () -> assertEquals(5, ((Employee[]) dataModel.get("employees")).length)
         );
     }
 
@@ -95,11 +107,23 @@ class ShiftPlanRunnerTest {
         ShiftPlanRunner runner = new ShiftPlanRunner();
         Map<String, Object> dataModel = runner.getShiftplanCopy(shiftPlanCopy, getShiftPlanCopyXSD);
         Path pdfPath = runner.createPDF(
-                "/home/stephan/Projekte/Web/Template",
+                "/home/stephan/Projekte/Konzepte/shiftplan/test/Template",
                 dataModel,
-                "/home/stephan/Projekte/Web"
+                "/home/stephan/Projekte/Konzepte/shiftplan/test/out"
         );
         assertNotNull(pdfPath);
+    }
+
+    @Test
+    void testGetShiftplanCopyAndCreatePDF_no_external_schema_no_external_template()
+            throws TemplateException, IOException {
+        ShiftPlanRunner runner = new ShiftPlanRunner();
+        Map<String, Object> dataModel = runner.getShiftplanCopy(shiftPlanCopy);
+        Path pdfPath = runner.createPDF(
+                null,
+                dataModel,
+                "/home/stephan/Projekte/Konzepte/shiftplan/test/out"
+        );
     }
 
     @Test

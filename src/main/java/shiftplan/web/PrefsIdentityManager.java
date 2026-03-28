@@ -7,22 +7,19 @@ import io.undertow.security.idm.PasswordCredential;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import shiftplan.security.PasswordHash;
+import shiftplan.security.SecretStore;
 import shiftplan.security.ShiftplanSecurityException;
 
 import java.security.NoSuchAlgorithmException;
 import java.security.Principal;
 import java.util.Collections;
 import java.util.Set;
-import java.util.prefs.Preferences;
 
 public class PrefsIdentityManager implements IdentityManager {
 
-    private final Preferences users;
     private static final Logger logger = LogManager.getLogger(PrefsIdentityManager.class);
 
-    PrefsIdentityManager() {
-        users = Preferences.userNodeForPackage(PrefsIdentityManager.class);
-    }
+    PrefsIdentityManager() {}
     @Override
     public Account verify(Account account) {
         return account;
@@ -31,7 +28,7 @@ public class PrefsIdentityManager implements IdentityManager {
     @Override
     public Account verify(String userName, Credential credential) {
         Account account = getAccount(userName);
-        if (account != null && verifyCredential(account, credential)) {
+        if (account != null && verifyCredential(credential)) {
             return account;
         }
         return null;
@@ -42,14 +39,15 @@ public class PrefsIdentityManager implements IdentityManager {
         return null;
     }
 
-    private boolean verifyCredential(Account account, Credential credential) {
+    private boolean verifyCredential(Credential credential) {
         if (credential instanceof PasswordCredential) {
             String providedPassword = String.valueOf(((PasswordCredential) credential).getPassword());
             try {
                 providedPassword = PasswordHash.toHexString(PasswordHash.getSHA(providedPassword));
                 logger.debug("Übermitteltes HexString-Passwort: {}", providedPassword);
-                String storedPassword = users.get(account.getPrincipal().getName(), "");
+                String storedPassword = SecretStore.secrets.getPassword();
                 logger.debug("Hinterlegtes Passwort: {}", storedPassword);
+                logger.info("Hash-Werte gleich? {}", storedPassword.equals(providedPassword) ? "ja" : "nein");
                 return storedPassword.equals(providedPassword);
             } catch (NoSuchAlgorithmException e) {
                 throw new ShiftplanSecurityException(e.getMessage());
@@ -59,7 +57,7 @@ public class PrefsIdentityManager implements IdentityManager {
     }
 
     private Account getAccount(final String userName) {
-        if (!users.get(userName, "").isBlank()) {
+        if (userName != null && userName.equals(SecretStore.secrets.getUserName())) {
             return new Account() {
 
                 private final Principal principal = new Principal() {

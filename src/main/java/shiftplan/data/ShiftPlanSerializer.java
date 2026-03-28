@@ -44,7 +44,7 @@ public class ShiftPlanSerializer {
     public ShiftPlanSerializer() {}
 
     /**
-     * ShiftPlanSerializer in Write-Only - Modus
+     * ShiftPlanSerializer in Write-Only - Modus // Read-Modus mit Schema-Datei als SourceStream
      *
      * @param xmlFile Pfad zur XML-Datei, in die die Objekt-Repräsentation des Schichtplans geschrieben wird
      */
@@ -65,7 +65,7 @@ public class ShiftPlanSerializer {
 
 
     /**
-     * ShiftPlanSerializer in Write-Only - Modus
+     * ShiftPlanSerializer in Write-Only - Modus // Read-Modus mit Schema-Datei als SourceStream
      *
      * @param xmlFile Pfad zur XML-Datei, in die die Objekt-Repräsentation des Schichtplans geschrieben wird
      */
@@ -91,6 +91,7 @@ public class ShiftPlanSerializer {
     }
 
     private boolean isValidFile(Path file) throws IllegalArgumentException {
+        if (file == null) {return false;}
         if (!Files.exists(file) || !Files.isRegularFile(file) || !Files.isReadable(file)) {
             throw new IllegalArgumentException("Ungültige oder nicht existierende Xml|XSD-Datei: " + file + "!");
         }
@@ -270,13 +271,21 @@ public class ShiftPlanSerializer {
     }
 
     public ShiftPlanCopy deserializeShiftplan(boolean parsePolicy) throws IOException, JDOMException {
-        // Die Dateien shiftplan_serialized.xml und shiftplan_serialized.xsd müssen existieren und gelesen werden können.
+        // Die Datei shiftplan_serialized.xml muss existieren
+        // Die Datei shiftplan_serialized.xsd ist optional, da sie auch aus dem Klassenpfad gelesen werden kann.
         boolean isValidXML = isValidFile(xmlFile);
         boolean isValidXSD = isValidFile(xsdFile);
+
         logger.info("shiftplan_serialized_xml und shiftplan_serialized.xsd existieren und sind lesbar: {}, {}",
                 isValidXML, isValidXSD);
 
-        DocumentParser documentParser = new DocumentParser(xmlFile, xsdFile);
+        DocumentParser documentParser;
+        if (isValidXML && isValidXSD) {
+            documentParser = new DocumentParser(xmlFile, xsdFile);
+        } else {
+            documentParser = new DocumentParser(xmlFile);
+        }
+
         Document doc = documentParser.getXMLDocument();
 
         Element root = doc.getRootElement();

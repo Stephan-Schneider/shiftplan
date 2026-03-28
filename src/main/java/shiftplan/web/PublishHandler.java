@@ -35,14 +35,13 @@ public class PublishHandler implements HttpHandler {
         if (this.isOutdatedShiftplanFile(outFile, shiftplanCopyFile)) {
             try {
                 ShiftPlanRunner runner = new ShiftPlanRunner();
-                Map<String, Object> dataModel = runner.getShiftplanCopy(bundle.getShiftPlanCopyXMLFile(),
-                        bundle.getShiftPlanCopySchemaDir());
+                Map<String, Object> dataModel = runner.getShiftplanCopy(bundle.getShiftPlanCopyXMLFile());
                 if ("html".equals(fileFormat)) {
                     String shiftplanHtml = runner.processTemplate(
-                            bundle.getTemplateDir(), dataModel, "shiftplan_web.ftl");
+                            null, dataModel, "shiftplan/document/shiftplan_web.ftl");
                     writeHtml(shiftplanHtml, outFile);
                 } else if ("pdf".equals(fileFormat)) {
-                    runner.createPDF(bundle.getTemplateDir(), dataModel, outFile.getParent().toString());
+                    runner.createPDF(null, dataModel, outFile.getParent().toString());
                 }
             } catch(IOException | TemplateException ex){
                 logger.error("Fehler bei Verarbeitung des Templates oder Speichern des finalen HTMLs", ex);

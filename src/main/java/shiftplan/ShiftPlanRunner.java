@@ -16,6 +16,7 @@ import shiftplan.data.ShiftPlanSerializer;
 import shiftplan.document.DocGenerator;
 import shiftplan.document.TemplateProcessor;
 import shiftplan.publish.EmailDispatch;
+import shiftplan.security.SecretStore;
 import shiftplan.users.Employee;
 import shiftplan.users.HomeOfficeRecord;
 import shiftplan.users.StaffList;
@@ -45,18 +46,27 @@ public class ShiftPlanRunner {
         this.createShiftplan(descriptor, shiftPlanCopyXMLFile, xmlPath);
     }
 
-    public void createShiftplan(IShiftplanDescriptor descriptor, String shiftPlanCopyXMLFile, String xmlPath) {
+    public void createShiftplan(IShiftplanDescriptor descriptor, String shiftPlanCopyXMLFile, String... xmlPathOption) {
         if (descriptor == null) {
             throw new ShiftPlanRunnerException("Keine Schichtplan-Beschreibungsdaten vorhanden!");
         }
 
         int year = descriptor.getYear();
-        BoundaryHandler boundaryHandler = new BoundaryHandler(
-                descriptor.getStartDate(),
-                descriptor.getEndDate(),
-                shiftPlanCopyXMLFile,
-                xmlPath
-        );
+
+        BoundaryHandler boundaryHandler;
+        if (xmlPathOption.length > 0 && xmlPathOption[0] != null && !xmlPathOption[0].isEmpty()) {
+            boundaryHandler = new BoundaryHandler(
+                    descriptor.getStartDate(),
+                    descriptor.getEndDate(),
+                    shiftPlanCopyXMLFile,
+                    xmlPathOption[0]);
+        } else {
+            boundaryHandler = new BoundaryHandler(
+                    descriptor.getStartDate(),
+                    descriptor.getEndDate(),
+                    shiftPlanCopyXMLFile
+            );
+        }
         boundaryHandler.setBoundaryStrict(descriptor.isBoundaryStrict());
         LocalDate startDate = boundaryHandler.getStartDate();
         LocalDate endDate = boundaryHandler.getEndDate();
@@ -99,7 +109,13 @@ public class ShiftPlanRunner {
             String[] employeeSet2 = swapParams.getEmployeeSet2();
             boolean swapHo = swapParams.isSwapHo();
 
-            ShiftPlanSerializer serializer = new ShiftPlanSerializer(shiftPlanCopyXMLFile, shiftPlanCopySchemaDir);
+            ShiftPlanSerializer serializer;
+            if (shiftPlanCopySchemaDir == null || shiftPlanCopySchemaDir.isEmpty()) {
+                serializer = new ShiftPlanSerializer(shiftPlanCopyXMLFile);
+            } else {
+                serializer = new ShiftPlanSerializer(shiftPlanCopyXMLFile, shiftPlanCopySchemaDir);
+            }
+
             ShiftPlanCopy copy = serializer.deserializeShiftplan();
 
             ShiftSwap swapper = new ShiftSwap(copy, mode, swapHo);
@@ -135,8 +151,14 @@ public class ShiftPlanRunner {
         }
     }
 
-    public Map<String, Object> getShiftplanCopy(String shiftPlanCopyXMLFile, String shiftPlanCopySchemaDir) {
-        ShiftPlanSerializer serializer = new ShiftPlanSerializer(shiftPlanCopyXMLFile, shiftPlanCopySchemaDir);
+    public Map<String, Object> getShiftplanCopy(String shiftPlanCopyXMLFile, String... shiftPlanCopySchemaDir) {
+        ShiftPlanSerializer serializer;
+        if (shiftPlanCopySchemaDir.length == 0 || shiftPlanCopySchemaDir[0] == null || shiftPlanCopySchemaDir[0].isEmpty()) {
+            serializer = new ShiftPlanSerializer(shiftPlanCopyXMLFile);
+        } else {
+            serializer = new ShiftPlanSerializer(shiftPlanCopyXMLFile, shiftPlanCopySchemaDir[0]);
+        }
+
         try {
             ShiftPlanCopy copy = serializer.deserializeShiftplan();
             ShiftSwapDataModelConverter converter = new ShiftSwapDataModelConverter(copy);
@@ -229,7 +251,7 @@ public class ShiftPlanRunner {
         }
         // Optional kann ein alternatives Template angegeben werden, z.B. 'shiftplan_web.ftl' für die Erstellung eines
         // Schichtplans im HTML-Format
-        String fileName = templateFileNames.length > 0 ? templateFileNames[0] : "shiftplan.ftl";
+        String fileName = templateFileNames.length > 0 ? templateFileNames[0] : "shiftplan/document/shiftplan.ftl";
         StringWriter output = processor.processDocumentTemplate(dataModel, fileName);
         return output.toString();
     }
@@ -444,6 +466,39 @@ public class ShiftPlanRunner {
         return options;
     }
 
+    private static void setCredentials() {
+        String userName = System.getenv("SHIFTPLAN_USER");
+        logger.info("Login-User: {} ", userName);
+        String hashedPassword = System.getenv("SHIFTPLAN_PASSWORD");
+        logger.info("Login-Password (Umgebungsvariabel): {} ", hashedPassword);
+
+        if (userName == null || userName.isBlank()) {
+            logger.error("Keine Umgebungsvariable SHIFTPLAN_USER gesetzt. Der Server kann nicht gestartet werden");
+            System.exit(1);
+        }
+        if (hashedPassword == null || hashedPassword.isBlank()) {
+            Path secretsPath = Path.of("/secrets").resolve("password_file");
+            if (Files.exists(secretsPath)) {
+                try {
+                    hashedPassword = Files.readString(secretsPath);
+                    logger.info("Login-Password (Datei): {} ", hashedPassword);
+                    if (hashedPassword == null || hashedPassword.isBlank()) {
+                        logger.error("Kein Passwort in Datei /secrets/password_file gefunden!");
+                        System.exit(1);
+                    }
+                } catch (IOException ex) {
+                    logger.error("Kann Passwort aus Datei /secrets/password_file nicht lesen!");
+                    System.exit(1);
+                }
+            } else {
+                logger.error("Keine Datei /secrets/password_file gefunden!");
+                System.exit(1);
+            }
+        }
+        hashedPassword = hashedPassword.trim();
+        SecretStore.createSecretStore(userName, hashedPassword);
+    }
+
     public static void main(String[] args) {
         // -x, --xmlPath: Enthält shiftplan.xml, shiftplan.xsd und shiftplan_serialized.xsd. Obligatorisch, wenn
         //          Anwendung in JAR gepackt ist.
@@ -607,6 +662,7 @@ public class ShiftPlanRunner {
         }
 
         if (startServer) {
+            setCredentials();
             new ConfigBundle.ConfigBuilder(
                     shiftplanJsonFile, shiftPlanCopyXMLFile, xmlPath)
                     .templateDir(templatePath)

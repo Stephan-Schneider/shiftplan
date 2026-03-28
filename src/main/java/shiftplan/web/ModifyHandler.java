@@ -40,7 +40,7 @@ public class ModifyHandler implements HttpHandler {
         try {
             ShiftPlanRunner runner = new ShiftPlanRunner();
             SwapParams swapParams = runner.getOperationalParams(paramString);
-            runner.modifyShiftPlan(config.getShiftPlanCopyXMLFile(), config.getShiftPlanCopySchemaDir(), swapParams);
+            runner.modifyShiftPlan(config.getShiftPlanCopyXMLFile(), null, swapParams);
 
             exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain; charset=utf-8");
             exchange.getResponseSender().send("Schichtplan geändert");

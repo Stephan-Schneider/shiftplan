@@ -209,7 +209,7 @@ class ShiftPlannerTest {
 
         TemplateProcessor processor = TemplateProcessor.INSTANCE;
         processor.initConfiguration();
-        StringWriter output = processor.processDocumentTemplate(dataModel, "shiftplan.ftl");
+        StringWriter output = processor.processDocumentTemplate(dataModel, "shiftplan/document/shiftplan.ftl");
 
         DocGenerator docGenerator = new DocGenerator();
         Document document = docGenerator.getRawHTML(output.toString());

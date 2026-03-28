@@ -14,6 +14,7 @@ import shiftplan.calendar.ShiftPolicy;
 import shiftplan.data.IShiftplanDescriptor;
 import shiftplan.users.Employee;
 
+import javax.xml.transform.stream.StreamSource;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,24 +30,76 @@ public class DocumentParser {
 
     private final Document doc;
 
+    /**
+     * Constructs a new instance of the DocumentParser class.
+     * This constructor attempts to load and parse the default "shiftplan.xml" file
+     * located in the application's classpath. The XML file is validated against the "shiftplan.xsd" schema.
+     *
+     * @throws ShiftPlanRunnerException if the "shiftplan.xml" file cannot be found in the classpath.
+     * @throws IOException if an I/O error occurs while reading the XML file.
+     * @throws JDOMException if there are issues parsing the XML document.
+     */
     public DocumentParser() throws IOException, JDOMException, ShiftPlanRunnerException {
         InputStream in = this.getClass().getClassLoader().getResourceAsStream("shiftplan.xml");
         if (in == null) throw new ShiftPlanRunnerException("shiftplan.xml nicht gefunden!");
 
-        SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory());
+        SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory("shiftplan.xsd"));
         doc = saxBuilder.build(in);
+    }
+
+    public DocumentParser(String xmlPath) throws IOException, JDOMException, ShiftPlanRunnerException {
+        this(Path.of(xmlPath));
+    }
+
+    /**
+     * Constructs a new instance of the DocumentParser class and parses the provided XML file.
+     * The XML file is validated against a schema, determined based on the file name.
+     *
+     * @param xmlPath the path to the XML file to be parsed. If the file is named "shiftplan.xml",
+     *                it is validated against "shiftplan.xsd". Otherwise, it is validated against
+     *                "shiftplan_serialized.xsd".
+     * @throws IOException if an I/O error occurs while reading the XML file.
+     * @throws JDOMException if there are issues parsing the XML document.
+     * @throws ShiftPlanRunnerException if the provided file does not exist or is not readable.
+     */
+    public DocumentParser(Path xmlPath) throws IOException, JDOMException, ShiftPlanRunnerException {
+        if (Files.isRegularFile(xmlPath) && Files.isReadable(xmlPath)) {
+            logger.debug("Die XMLDatei {} existiert und ist lesbar", xmlPath);
+
+            String schemaFile;
+            if (xmlPath.getFileName().toString().equals("shiftplan.xml")) {
+                schemaFile = "shiftplan.xsd";
+            } else {
+                schemaFile = "shiftplan_serialized.xsd";
+            }
+            SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory(schemaFile));
+            doc = saxBuilder.build(xmlPath.toFile());
+        } else {
+            throw new ShiftPlanRunnerException(xmlPath + " nicht gefunden");
+        }
     }
 
     public DocumentParser(String xmlPath, String xsdPath) throws IOException, JDOMException, IllegalArgumentException {
         this(Path.of(xmlPath), Path.of(xsdPath));
     }
 
+    /**
+     * Constructs a new instance of the DocumentParser class, which parses an XML file
+     * and validates it against a specified XSD schema file. The XML and XSD files
+     * must both exist and be readable.
+     *
+     * @param xmlPath the path to the XML file to be parsed.
+     * @param xsdPath the path to the XSD schema file used for validation.
+     * @throws IOException if an I/O error occurs while reading the files.
+     * @throws JDOMException if there are issues parsing the XML document.
+     * @throws ShiftPlanRunnerException if the XML or XSD file does not exist or is not readable.
+     */
     public DocumentParser(Path xmlPath, Path xsdPath) throws IOException, JDOMException, ShiftPlanRunnerException {
         if (Files.isRegularFile(xmlPath) && Files.isReadable(xmlPath)
                 && Files.isRegularFile(xsdPath) && Files.isReadable(xsdPath)) {
             logger.debug("XMLDatei und XSD-Datei existieren und sind lesbar");
 
-            SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory(String.valueOf(xsdPath)));
+            SAXBuilder saxBuilder = new SAXBuilder(getSchemaFactory(xsdPath));
             //SAXBuilder saxBuilder = new SAXBuilder();
             doc = saxBuilder.build(xmlPath.toFile());
         } else {
@@ -54,26 +107,27 @@ public class DocumentParser {
         }
     }
 
-    private XMLReaderJDOMFactory getSchemaFactory() throws JDOMException {
-        return getSchemaFactory("shiftplan.xsd");
+    private XMLReaderJDOMFactory getSchemaFactory(String schemaFile) throws JDOMException {
+        return getSchemaFactoryFromClassPath(schemaFile);
     }
 
-    private XMLReaderJDOMFactory getSchemaFactory(String xsdPath) throws JDOMException {
-        // Die Schema-Datei kann nur lokalisiert werden, wenn:
-        // A) die Anwendung nicht in ein JAR-Archiv gepackt ist (d.h. die Anwendung liegt in "explodierter" Form vor)
-        // B) die Anwendung in ein JAR-Archiv gepackt ist und der Pfad zu einer außerhalb des Archivs liegenden
-        //    Schema-Datei übergeben wird.
-        File schemaFile;
-        URL url = this.getClass().getClassLoader().getResource(xsdPath);
-        // Testen, ob die XSD-Datei als Resource geladen werden kann
-        if (url != null) {
-            schemaFile = new File(url.getFile());
-            return new XMLReaderXSDFactory(schemaFile);
+    private XMLReaderJDOMFactory getSchemaFactory(Path xsdPath) throws JDOMException {
+        return new XMLReaderXSDFactory(xsdPath.toFile());
+    }
+
+    private XMLReaderJDOMFactory getSchemaFactoryFromClassPath(String xsdResource) throws ShiftPlanRunnerException, JDOMException {
+        ClassLoader classLoader = this.getClass().getClassLoader();
+        URL schemaUrl = classLoader.getResource(xsdResource);
+        InputStream schemaStream = classLoader.getResourceAsStream(xsdResource);
+
+        if (schemaUrl == null || schemaStream == null) {
+            throw new ShiftPlanRunnerException("Schema-Datei '" + xsdResource + "' nicht gefunden!");
         }
-        // Falls die Resource mit der o.a. Methode nicht gefunden wird, ist davon auszugehen, dass es sich bei
-        // <xsdPath> um den absoluten Pfad zu einer externen Resource handelt. Es wird ein Path-/File-Objekt erstellt.
-        schemaFile = Path.of(xsdPath).toFile();
-        return new XMLReaderXSDFactory(schemaFile);
+
+        StreamSource streamSource = new StreamSource(schemaStream);
+        streamSource.setSystemId(schemaUrl.toExternalForm());
+
+        return new XMLReaderXSDFactory(streamSource);
     }
 
     public Document getXMLDocument() {

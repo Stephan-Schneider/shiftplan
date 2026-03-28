@@ -16,6 +16,7 @@ import java.util.Objects;
 public enum TemplateProcessor {
 
     INSTANCE;
+    private static final String CLASSPATH_TEMPLATE_BASE = "/";
     private Configuration cfg;
     private boolean configured;
 
@@ -28,15 +29,8 @@ public enum TemplateProcessor {
     public boolean initConfiguration(String templateDir) throws IOException {
         if (cfg != null && configured) return true;
 
-        File templateDirFile;
-        if (templateDir == null) {
-            templateDirFile = getTemplateDir();
-        } else {
-            templateDirFile = getTemplateDir(templateDir);
-        }
-
         cfg = new Configuration(Configuration.VERSION_2_3_31);
-        cfg.setDirectoryForTemplateLoading(templateDirFile);
+        configureTemplateLoading(templateDir);
         cfg.setDefaultEncoding("UTF-8");
         cfg.setObjectWrapper(new Java8ObjectWrapper(Configuration.VERSION_2_3_31)); // java.time.LocalDate - Formatierung !!
         cfg.setTemplateExceptionHandler(TemplateExceptionHandler.HTML_DEBUG_HANDLER);
@@ -48,23 +42,22 @@ public enum TemplateProcessor {
         return true;
     }
 
-    private File getTemplateDir() {
-        String templateDir = Objects.requireNonNull(getClass().getResource("templates")).getFile();
-        logger.info("Template - Verzeichnis: {} wird gesetzt", templateDir);
-        return new File(templateDir);
-    }
+    private void configureTemplateLoading(String templateDir) throws IOException {
+        if (templateDir != null && !templateDir.isBlank()) {
+            Path p = Path.of(templateDir);
+            if (!Files.isDirectory(p)) {
+                throw new IllegalArgumentException("Kein gültiger Pfad zum Template-Verzeichnis: " + templateDir);
+            }
+            logger.info("Template-Verzeichnis auf Dateisystem wird verwendet: {}", p);
+            cfg.setDirectoryForTemplateLoading(p.toFile());
+            return;
+        }
 
-    private File getTemplateDir(String templateDir) {
-        Path p;
-        if (templateDir == null || templateDir.isEmpty()) {
-            throw new IllegalArgumentException("Kein Template-Verzeichnis angegeben!");
-        }
-        p = Path.of(templateDir);
-        if (!Files.isDirectory(p)) {
-            throw new IllegalArgumentException("Kein gültiger Pfad zum Template-Verzeichnis: " + templateDir);
-        }
-        logger.info("Template - Verzeichnis {} wird gesetzt", p.toString());
-        return p.toFile();
+        logger.info("Gebündelte Templates aus dem Classpath werden verwendet: {}", CLASSPATH_TEMPLATE_BASE);
+        cfg.setClassForTemplateLoading(
+                this.getClass(),
+                CLASSPATH_TEMPLATE_BASE
+        );
     }
 
     public StringWriter processDocumentTemplate(Map<String, Object> dataModel, String templateFile)
